@@ -36,6 +36,7 @@ async function createWebRoot(t) {
     writeFile(join(directory, "index.html"), "<html>navigator</html>"),
     writeFile(join(directory, "app.js"), "console.log('navigator')"),
     writeFile(join(directory, "style.css"), "body{}"),
+    writeFile(join(directory, "markdown.js"), "export function renderMarkdown() {}"),
     writeFile(join(vendorDirectory, "marked.esm.js"), "export const marked = {};"),
     writeFile(join(vendorDirectory, "purify.es.mjs"), "export default () => ({});"),
   ]);
@@ -94,6 +95,10 @@ test("serves static assets and protects thread APIs", async (t) => {
   assert.match(policy, /frame-src 'none'/);
   assert.match(policy, /object-src 'none'/);
   assert.match(policy, /form-action 'none'/);
+
+  const markdown = await fetch(apiUrl(navigator.url, "/markdown.js"));
+  assert.equal(markdown.status, 200);
+  assert.match(markdown.headers.get("content-type"), /^text\/javascript/);
 
   const marked = await fetch(apiUrl(navigator.url, "/vendor/marked.esm.js"));
   assert.equal(marked.status, 200);
