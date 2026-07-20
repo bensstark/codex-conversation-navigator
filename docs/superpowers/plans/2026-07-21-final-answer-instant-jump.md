@@ -240,17 +240,16 @@ git commit -m "fix: jump instantly between user messages"
 
 ---
 
-### Task 3: Verify the Installed Skill End to End
+### Task 3: Verify the Feature Branch End to End
 
 **Files:**
 - Verify: `skill/conversation-navigator/`
-- Verify: `/home/user/.codex/skills/conversation-navigator`
 
 **Interfaces:**
-- Consumes: the installed symlink, local `codex app-server`, and a current VS Code thread containing both `commentary` and `final_answer` phases.
-- Produces: fresh evidence that the installed HTTP API exposes only final assistant messages and retains all existing safety behavior.
+- Consumes: the feature worktree, local `codex app-server`, and a current VS Code thread containing both `commentary` and `final_answer` phases.
+- Produces: fresh evidence that the feature branch's HTTP API exposes only final assistant messages and retains all existing safety behavior.
 
-- [ ] **Step 1: Validate tests, package, diff, and installation target**
+- [ ] **Step 1: Validate tests, package, and diff**
 
 Run:
 
@@ -258,7 +257,6 @@ Run:
 npm test
 python3 /home/user/.codex/skills/.system/skill-creator/scripts/quick_validate.py skill/conversation-navigator
 git diff --check
-test "$(readlink -f /home/user/.codex/skills/conversation-navigator)" = "/home/user/codex-conversation-navigator/skill/conversation-navigator"
 ```
 
 Expected: 18 tests PASS, `Skill is valid!`, no diff errors, and exit code 0.
@@ -327,3 +325,5 @@ git log --oneline --max-count=5
 ```
 
 Expected: clean working tree and both behavior commits above the design commits.
+
+The installed symlink intentionally remains pointed at `main` during isolated development. Do not repoint it to the worktree. After a local merge, repeat the package validation and live smoke test from `/home/user/codex-conversation-navigator` before claiming that the installed version is updated.
