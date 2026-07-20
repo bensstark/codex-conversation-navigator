@@ -1,0 +1,176 @@
+import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import {
+  createNavigatorServer,
+  parseCliArgs,
+} from "../skill/conversation-navigator/scripts/server.mjs";
+
+const rawThread = {
+  id: "thread-1",
+  name: "Runtime",
+  preview: "Explain run",
+  updatedAt: 42,
+  turns: [
+    {
+      id: "turn-1",
+      items: [
+        {
+          type: "userMessage",
+          id: "user-1",
+          content: [{ type: "text", text: "Explain run()" }],
+        },
+      ],
+    },
+  ],
+};
+
+async function createWebRoot(t) {
+  const directory = await mkdtemp(join(tmpdir(), "conversation-navigator-"));
+  await Promise.all([
+    writeFile(join(directory, "index.html"), "<html>navigator</html>"),
+    writeFile(join(directory, "app.js"), "console.log('navigator')"),
+    writeFile(join(directory, "style.css"), "body{}"),
+  ]);
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+function createFakeClient({ readError } = {}) {
+  return {
+    stopped: 0,
+    async listThreads(cwd) {
+      assert.equal(cwd, "/repo");
+      return [rawThread];
+    },
+    async readThread(threadId) {
+      assert.equal(threadId, "thread-1");
+      if (readError) {
+        throw readError;
+      }
+      return rawThread;
+    },
+    stop() {
+      this.stopped += 1;
+    },
+  };
+}
+
+function apiUrl(base, path) {
+  return new URL(path, base).toString();
+}
+
+function authHeaders() {
+  return { authorization: "Bearer test-token" };
+}
+
+test("serves static assets and protects thread APIs", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const client = createFakeClient();
+  const navigator = await createNavigatorServer({
+    client,
+    cwd: "/repo",
+    webRoot,
+    token: "test-token",
+    idleMs: 0,
+    openUrl: false,
+  });
+  t.after(() => navigator.close());
+
+  const index = await fetch(apiUrl(navigator.url, "/"));
+  assert.equal(index.status, 200);
+  assert.equal(await index.text(), "<html>navigator</html>");
+  assert.match(index.headers.get("content-security-policy"), /default-src 'self'/);
+
+  const unauthorized = await fetch(apiUrl(navigator.url, "/api/threads"));
+  assert.equal(unauthorized.status, 401);
+
+  const authorized = await fetch(apiUrl(navigator.url, "/api/threads"), {
+    headers: authHeaders(),
+  });
+  assert.equal(authorized.status, 200);
+  assert.deepEqual(await authorized.json(), {
+    threads: [
+      {
+        id: "thread-1",
+        name: "Runtime",
+        preview: "Explain run",
+        updatedAt: 42,
+      },
+    ],
+  });
+
+  const thread = await fetch(
+    apiUrl(navigator.url, "/api/threads/thread-1"),
+    { headers: authHeaders() },
+  );
+  assert.equal(thread.status, 200);
+  assert.equal((await thread.json()).thread.navigation[0].text, "Explain run()");
+
+  const missing = await fetch(apiUrl(navigator.url, "/missing"));
+  assert.equal(missing.status, 404);
+});
+
+test("returns App Server errors without exposing a stack", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const navigator = await createNavigatorServer({
+    client: createFakeClient({ readError: new Error("read failed") }),
+    cwd: "/repo",
+    webRoot,
+    token: "test-token",
+    idleMs: 0,
+    openUrl: false,
+  });
+  t.after(() => navigator.close());
+
+  const response = await fetch(
+    apiUrl(navigator.url, "/api/threads/thread-1"),
+    { headers: authHeaders() },
+  );
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "read failed" });
+});
+
+test("close is idempotent and stops App Server once", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const client = createFakeClient();
+  const navigator = await createNavigatorServer({
+    client,
+    cwd: "/repo",
+    webRoot,
+    idleMs: 0,
+    openUrl: false,
+  });
+
+  await navigator.close();
+  await navigator.close();
+  assert.equal(client.stopped, 1);
+});
+
+test("closes after the configured idle timeout", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const client = createFakeClient();
+  const navigator = await createNavigatorServer({
+    client,
+    cwd: "/repo",
+    webRoot,
+    idleMs: 20,
+    openUrl: false,
+  });
+  t.after(() => navigator.close());
+
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(client.stopped, 1);
+});
+
+test("parses CLI arguments", () => {
+  assert.deepEqual(parseCliArgs(["--cwd", "/repo", "--no-open"]), {
+    cwd: "/repo",
+    openUrl: false,
+  });
+  assert.throws(() => parseCliArgs(["--cwd"]), /requires a path/);
+  assert.throws(() => parseCliArgs(["--unknown"]), /Unknown argument/);
+});
