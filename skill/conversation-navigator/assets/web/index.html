@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Codex 对话导航</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">CODEX COMPANION</p>
+        <h1>对话导航</h1>
+      </div>
+      <label class="thread-picker">
+        <span>对话</span>
+        <select id="thread-select" aria-label="选择 Codex 对话"></select>
+      </label>
+    </header>
+
+    <main>
+      <aside class="outline-panel" aria-label="用户消息导航">
+        <label class="search-box">
+          <span class="sr-only">搜索用户消息</span>
+          <input id="message-search" type="search" placeholder="搜索用户消息…" autocomplete="off">
+        </label>
+        <nav id="message-outline" aria-label="用户消息列表"></nav>
+      </aside>
+
+      <section class="conversation-panel" aria-label="对话内容">
+        <div id="status" class="status" role="status" aria-live="polite">正在连接 Codex…</div>
+        <div id="transcript" class="transcript" tabindex="0"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
