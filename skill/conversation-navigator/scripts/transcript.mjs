@@ -43,7 +43,11 @@ export function projectThread(thread) {
             text,
             label: excerpt(text) || "Untitled user message",
           });
-        } else if (item.type === "agentMessage" && item.text) {
+        } else if (
+          item.type === "agentMessage"
+          && item.phase === "final_answer"
+          && item.text
+        ) {
           messages.push({ id: item.id, role: "assistant", text: item.text });
         }
       }

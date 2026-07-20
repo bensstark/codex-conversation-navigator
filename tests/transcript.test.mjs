@@ -38,7 +38,14 @@ test("projectThread creates one outline entry per user message", () => {
           { type: "reasoning", id: "reasoning-1", summary: [], content: [] },
           {
             type: "agentMessage",
-            id: "agent-1",
+            id: "agent-commentary-1",
+            phase: "commentary",
+            text: "I am checking the runtime.",
+          },
+          {
+            type: "agentMessage",
+            id: "agent-final-1",
+            phase: "final_answer",
             text: "run dispatches actions.",
           },
         ],
@@ -62,6 +69,36 @@ test("projectThread creates one outline entry per user message", () => {
       { role: "assistant", text: "run dispatches actions." },
     ],
   );
+  assert.doesNotMatch(JSON.stringify(result), /I am checking the runtime/);
+});
+
+test("projectThread hides commentary while preserving an unfinished user turn", () => {
+  const result = projectThread({
+    id: "thread-1",
+    turns: [
+      {
+        id: "turn-running",
+        items: [
+          {
+            type: "userMessage",
+            id: "user-running",
+            content: [{ type: "text", text: "Check the failing test" }],
+          },
+          {
+            type: "agentMessage",
+            id: "agent-running",
+            phase: "commentary",
+            text: "I am still investigating.",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(result.turns[0].messages, [
+    { id: "user-running", role: "user", text: "Check the failing test" },
+  ]);
+  assert.doesNotMatch(JSON.stringify(result), /still investigating/);
 });
 
 test("projectThread compacts and truncates long navigation labels", () => {
