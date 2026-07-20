@@ -60,7 +60,7 @@ Use DOMPurify's HTML profile with unknown protocols disabled and named-property 
 Remove at minimum:
 
 - `script`, `style`, `iframe`, `frame`, `frameset`, `object`, `embed`, `applet`, `base`, `meta`, and `link` elements.
-- `form`, `input`, `button`, `textarea`, `select`, and `option` elements.
+- `form`, `button`, `textarea`, `select`, and `option` elements, plus every `input` except a disabled task-list checkbox.
 - `video`, `audio`, `source`, and `track` elements.
 - All inline `style`, `id`, `name`, `class`, and `srcset` attributes.
 - Event handler attributes and other attributes DOMPurify considers unsafe.
@@ -74,6 +74,7 @@ After sanitization:
 - Set every surviving link to `target="_blank"`, `rel="noopener noreferrer"`, and `referrerpolicy="no-referrer"`.
 - Accept image sources only for `http:`, `https:`, or `data:image/`. Remove other `src` values.
 - Set every surviving image to `loading="lazy"`, `decoding="async"`, and `referrerpolicy="no-referrer"`.
+- Keep only disabled `input[type="checkbox"]` elements, strip all other attributes, and restore only `type`, `disabled`, and an optional `checked` state.
 
 The user accepts that remote images still reveal network metadata such as IP address and load time to the image host.
 
@@ -110,7 +111,7 @@ Test successful rendering of:
 
 Test removal of:
 
-- Scripts, event attributes, dangerous protocols, styles, forms, iframes, embedded objects, active media, SVG, MathML, custom elements, dangerous classes/IDs, and `srcset`.
+- Scripts, event attributes, dangerous protocols, styles, interactive form controls, iframes, embedded objects, active media, SVG, MathML, custom elements, dangerous classes/IDs, and `srcset`.
 
 Also test:
 
