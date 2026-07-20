@@ -79,8 +79,8 @@ Trigger on requests to browse, search, or navigate local Codex conversation hist
 - Show a thread selector when multiple matching conversations exist.
 - Show a searchable left outline containing numbered user-message excerpts.
 - Show a right transcript grouped by turn.
-- Render user and agent text; represent non-text user input with compact labels.
-- Scroll smoothly to a turn when its outline entry is clicked.
+- Render every user message and only `final_answer` agent messages; represent non-text user input with compact labels.
+- Jump immediately to a turn when its outline entry is clicked.
 - Highlight the visible turn using `IntersectionObserver`.
 - Poll the selected thread every two seconds and append changed content without forcing the user's scroll position.
 - Keep command executions, reasoning, and tool details out of the first version.
