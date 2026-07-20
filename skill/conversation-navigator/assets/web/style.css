@@ -184,7 +184,6 @@ main {
   min-height: 0;
   overflow-y: auto;
   padding: 8px clamp(20px, 5vw, 76px) 72px;
-  scroll-behavior: smooth;
   scroll-padding-top: 18px;
   outline: none;
 }

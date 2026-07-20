@@ -14,6 +14,10 @@ export function isNearBottom({ scrollHeight, scrollTop, clientHeight }) {
   return scrollHeight - scrollTop - clientHeight <= 32;
 }
 
+export function jumpToMessage(target) {
+  target?.scrollIntoView({ behavior: "auto", block: "start" });
+}
+
 function createElement(tagName, className, text) {
   const node = document.createElement(tagName);
   if (className) {
@@ -128,10 +132,7 @@ function bootstrap() {
         createElement("span", "outline-label", entry.label),
       );
       button.addEventListener("click", () => {
-        document.getElementById(`message-${entry.messageId}`)?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        jumpToMessage(document.getElementById(`message-${entry.messageId}`));
         setActiveMessage(entry.messageId);
       });
       fragment.append(button);

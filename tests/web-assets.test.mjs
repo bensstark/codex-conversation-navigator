@@ -20,14 +20,16 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /id="transcript"/);
   assert.match(html, /src="\/app\.js"/);
   assert.doesNotMatch(app, /\.innerHTML\s*=/);
+  assert.doesNotMatch(app, /behavior:\s*"smooth"/);
   assert.match(app, /scrollIntoView/);
   assert.match(app, /IntersectionObserver/);
   assert.match(app, /setInterval/);
+  assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
   assert.match(css, /grid-template-columns/);
 });
 
 test("frontend helpers filter messages and detect bottom proximity", async () => {
-  const { filterNavigation, isNearBottom } = await import(
+  const { filterNavigation, isNearBottom, jumpToMessage } = await import(
     "../skill/conversation-navigator/assets/web/app.js"
   );
 
@@ -45,4 +47,12 @@ test("frontend helpers filter messages and detect bottom proximity", async () =>
     isNearBottom({ scrollHeight: 1_000, scrollTop: 600, clientHeight: 200 }),
     false,
   );
+  let scrollOptions;
+  jumpToMessage({
+    scrollIntoView(options) {
+      scrollOptions = options;
+    },
+  });
+  assert.deepEqual(scrollOptions, { behavior: "auto", block: "start" });
+  assert.doesNotThrow(() => jumpToMessage(null));
 });
