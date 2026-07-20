@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -30,10 +30,14 @@ const rawThread = {
 
 async function createWebRoot(t) {
   const directory = await mkdtemp(join(tmpdir(), "conversation-navigator-"));
+  const vendorDirectory = join(directory, "vendor");
+  await mkdir(vendorDirectory, { recursive: true });
   await Promise.all([
     writeFile(join(directory, "index.html"), "<html>navigator</html>"),
     writeFile(join(directory, "app.js"), "console.log('navigator')"),
     writeFile(join(directory, "style.css"), "body{}"),
+    writeFile(join(vendorDirectory, "marked.esm.js"), "export const marked = {};"),
+    writeFile(join(vendorDirectory, "purify.es.mjs"), "export default () => ({});"),
   ]);
   t.after(() => rm(directory, { recursive: true, force: true }));
   return directory;
@@ -84,6 +88,25 @@ test("serves static assets and protects thread APIs", async (t) => {
   assert.equal(index.status, 200);
   assert.equal(await index.text(), "<html>navigator</html>");
   assert.match(index.headers.get("content-security-policy"), /default-src 'self'/);
+  const policy = index.headers.get("content-security-policy");
+  assert.match(policy, /img-src 'self' data: http: https:/);
+  assert.match(policy, /media-src 'none'/);
+  assert.match(policy, /frame-src 'none'/);
+  assert.match(policy, /object-src 'none'/);
+  assert.match(policy, /form-action 'none'/);
+
+  const marked = await fetch(apiUrl(navigator.url, "/vendor/marked.esm.js"));
+  assert.equal(marked.status, 200);
+  assert.match(marked.headers.get("content-type"), /^text\/javascript/);
+
+  const purify = await fetch(apiUrl(navigator.url, "/vendor/purify.es.mjs"));
+  assert.equal(purify.status, 200);
+  assert.match(purify.headers.get("content-type"), /^text\/javascript/);
+
+  const unlistedVendorFile = await fetch(
+    apiUrl(navigator.url, "/vendor/DOMPURIFY-LICENSE"),
+  );
+  assert.equal(unlistedVendorFile.status, 404);
 
   const unauthorized = await fetch(apiUrl(navigator.url, "/api/threads"));
   assert.equal(unauthorized.status, 401);

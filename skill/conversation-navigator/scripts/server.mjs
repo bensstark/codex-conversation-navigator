@@ -12,6 +12,8 @@ const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/style.css", ["style.css", "text/css; charset=utf-8"]],
+  ["/vendor/marked.esm.js", ["vendor/marked.esm.js", "text/javascript; charset=utf-8"]],
+  ["/vendor/purify.es.mjs", ["vendor/purify.es.mjs", "text/javascript; charset=utf-8"]],
 ]);
 
 const CONTENT_SECURITY_POLICY = [
@@ -19,7 +21,11 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self'",
   "style-src 'self'",
   "connect-src 'self'",
-  "img-src 'self' data:",
+  "img-src 'self' data: http: https:",
+  "media-src 'none'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
   "base-uri 'none'",
   "frame-ancestors 'none'",
 ].join("; ");
