@@ -12,7 +12,7 @@ Codex App Server and the navigator HTTP API preserve Markdown source correctly. 
 
 - Render both user messages and visible Codex `final_answer` messages as Markdown.
 - Support headings, paragraphs, emphasis, strikethrough, links, autolinks, images, block quotes, ordered and unordered lists, task lists, fenced and inline code, horizontal rules, tables, and raw HTML.
-- Automatically load `http:` and `https:` images. Keep `data:` images available.
+- Automatically load `http:` and `https:` images. Keep raster `data:image/` sources available while rejecting SVG data images.
 - Open links in a new tab with `noopener noreferrer` and no referrer.
 - Continue hiding Codex `commentary`, reasoning, command, tool, and other non-message items.
 - Fall back to readable plain text when Markdown parsing or sanitization fails.
@@ -72,9 +72,9 @@ After sanitization:
 
 - Accept link destinations only when they resolve to `http:`, `https:`, `mailto:`, a relative URL, or a same-document fragment. Remove other `href` values.
 - Set every surviving link to `target="_blank"`, `rel="noopener noreferrer"`, and `referrerpolicy="no-referrer"`.
-- Accept image sources only for `http:`, `https:`, or `data:image/`. Remove other `src` values.
+- Accept image sources only for `http:`, `https:`, or raster `data:image/` media types. Remove other `src` values, including SVG data images.
 - Set every surviving image to `loading="lazy"`, `decoding="async"`, and `referrerpolicy="no-referrer"`.
-- Keep only disabled `input[type="checkbox"]` elements, strip all other attributes, and restore only `type`, `disabled`, and an optional `checked` state.
+- Keep only disabled `input[type="checkbox"]` elements inside list items, strip all other attributes, and restore only `type`, `disabled`, and an optional `checked` state.
 
 The user accepts that remote images still reveal network metadata such as IP address and load time to the image host.
 
@@ -101,7 +101,7 @@ Keep `default-src 'self'`, `script-src 'self'`, `style-src 'self'`, `connect-src
 
 ## Testing
 
-Use jsdom 29.1.1 as a pinned development-only dependency to exercise the actual vendored Marked and DOMPurify modules with the Node test runner. Do not add runtime npm dependencies.
+Use jsdom 29.1.1 as a pinned development-only dependency to exercise the actual vendored Marked and DOMPurify modules with the Node test runner. Its test environment requires Node.js 20.19 or newer. Do not add runtime npm dependencies.
 
 Test successful rendering of:
 
