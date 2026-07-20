@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conversation Navigator"
+  short_description: "Browse local Codex conversations by user message"
+  default_prompt: "Use $conversation-navigator to open a read-only navigator for this project."
