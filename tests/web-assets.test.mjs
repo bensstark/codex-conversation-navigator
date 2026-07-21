@@ -52,6 +52,7 @@ test("web assets expose the navigation interface safely", async () => {
   );
   assert.match(css, /\.message-text h2/);
   assert.match(css, /\.message-text pre/);
+  assert.match(css, /\.message-text \.hljs-keyword/);
   assert.match(css, /\.message-text table/);
   assert.match(css, /\.message-text img/);
   assert.match(css, /\.message-text blockquote/);

@@ -39,6 +39,7 @@ async function createWebRoot(t) {
     writeFile(join(directory, "markdown.js"), "export function renderMarkdown() {}"),
     writeFile(join(vendorDirectory, "marked.esm.js"), "export const marked = {};"),
     writeFile(join(vendorDirectory, "purify.es.mjs"), "export default () => ({});"),
+    writeFile(join(vendorDirectory, "highlight.min.js"), "export default {};"),
   ]);
   t.after(() => rm(directory, { recursive: true, force: true }));
   return directory;
@@ -117,6 +118,11 @@ test("serves static assets and protects thread APIs", async (t) => {
   assert.equal(purify.status, 200);
   assert.match(purify.headers.get("content-type"), /^text\/javascript/);
   assert.equal(purify.headers.get("referrer-policy"), "no-referrer");
+
+  const highlight = await fetch(apiUrl(navigator.url, "/vendor/highlight.min.js"));
+  assert.equal(highlight.status, 200);
+  assert.match(highlight.headers.get("content-type"), /^text\/javascript/);
+  assert.equal(highlight.headers.get("referrer-policy"), "no-referrer");
 
   const unlistedVendorFile = await fetch(
     apiUrl(navigator.url, "/vendor/DOMPURIFY-LICENSE"),

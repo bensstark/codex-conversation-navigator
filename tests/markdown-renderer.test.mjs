@@ -60,7 +60,11 @@ const answer = 42;
   assert.ok(container.querySelector("br"));
   assert.ok(container.querySelector("ul"));
   assert.ok(container.querySelector("ol"));
-  assert.equal(container.querySelector("pre code")?.textContent.trim(), "const answer = 42;");
+  const code = container.querySelector("pre code");
+  assert.equal(code?.textContent.trim(), "const answer = 42;");
+  assert.equal(code?.classList.contains("language-js"), true);
+  assert.equal(code?.classList.contains("hljs"), true);
+  assert.equal(code?.querySelector(".hljs-keyword")?.textContent, "const");
   const gfmTable = container.querySelector("table");
   assert.equal(gfmTable?.querySelectorAll("th")[0]?.getAttribute("align"), "left");
   assert.equal(gfmTable?.querySelectorAll("th")[1]?.getAttribute("align"), "center");
@@ -77,6 +81,27 @@ const answer = 42;
   }
   assert.equal(container.querySelector("details summary")?.textContent, "More");
   assert.equal(container.querySelector("details")?.hasAttribute("open"), true);
+});
+
+test("renderMarkdown sanitizes syntax-highlighter output", () => {
+  const highlighter = {
+    getLanguage() {
+      return true;
+    },
+    highlight() {
+      return {
+        value: '<img src="x" onerror="alert(1)"><span class="hljs-keyword forged" onclick="alert(1)">const</span> answer = 42;',
+      };
+    },
+  };
+  const { container } = render("```js\nconst answer = 42;\n```", { highlighter });
+  const code = container.querySelector("pre code");
+
+  assert.equal(code?.querySelector("img"), null);
+  assert.equal(code?.querySelector("[onclick]"), null);
+  assert.equal(code?.querySelector("span")?.getAttribute("class"), "hljs-keyword");
+  assert.equal(code?.classList.contains("hljs"), true);
+  assert.equal(code?.textContent.trim(), "const answer = 42;");
 });
 
 test("renderMarkdown removes active content and unsafe attributes", () => {

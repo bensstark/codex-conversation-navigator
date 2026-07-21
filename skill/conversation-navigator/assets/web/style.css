@@ -314,6 +314,65 @@ body.topbar-hidden main {
   white-space: pre;
 }
 
+.message-text pre .hljs {
+  color: #e6edf3;
+}
+
+.message-text .hljs-keyword,
+.message-text .hljs-selector-tag,
+.message-text .hljs-literal,
+.message-text .hljs-section,
+.message-text .hljs-link {
+  color: #ff7b72;
+}
+
+.message-text .hljs-string,
+.message-text .hljs-attribute,
+.message-text .hljs-template-tag,
+.message-text .hljs-template-variable {
+  color: #a5d6ff;
+}
+
+.message-text .hljs-title,
+.message-text .hljs-name,
+.message-text .hljs-type,
+.message-text .hljs-number,
+.message-text .hljs-symbol,
+.message-text .hljs-bullet {
+  color: #d2a8ff;
+}
+
+.message-text .hljs-built_in,
+.message-text .hljs-selector-class,
+.message-text .hljs-selector-id {
+  color: #79c0ff;
+}
+
+.message-text .hljs-variable,
+.message-text .hljs-params,
+.message-text .hljs-property {
+  color: #ffa657;
+}
+
+.message-text .hljs-comment,
+.message-text .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.message-text .hljs-meta,
+.message-text .hljs-doctag {
+  color: #7ee787;
+}
+
+.message-text .hljs-addition {
+  color: #aff5b4;
+}
+
+.message-text .hljs-deletion {
+  color: #ffdcd7;
+}
+
 .message-text a {
   color: var(--accent);
   text-underline-offset: 0.16em;

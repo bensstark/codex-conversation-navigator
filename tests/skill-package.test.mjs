@@ -27,14 +27,17 @@ test("skill package includes its declared entrypoint and web assets", async () =
     access(new URL("assets/web/vendor/MARKED-LICENSE", skillRoot)),
     access(new URL("assets/web/vendor/purify.es.mjs", skillRoot)),
     access(new URL("assets/web/vendor/DOMPURIFY-LICENSE", skillRoot)),
+    access(new URL("assets/web/vendor/highlight.min.js", skillRoot)),
+    access(new URL("assets/web/vendor/HIGHLIGHTJS-LICENSE", skillRoot)),
     access(new URL("agents/openai.yaml", skillRoot)),
   ]);
 });
 
 test("vendored markdown dependencies have pinned versions and licenses", async () => {
-  const [marked, purify, packageJson, packageLock] = await Promise.all([
+  const [marked, purify, highlight, packageJson, packageLock] = await Promise.all([
     readFile(new URL("assets/web/vendor/marked.esm.js", skillRoot), "utf8"),
     readFile(new URL("assets/web/vendor/purify.es.mjs", skillRoot), "utf8"),
+    readFile(new URL("assets/web/vendor/highlight.min.js", skillRoot), "utf8"),
     readFile(new URL("package.json", packageRoot), "utf8"),
     readFile(new URL("package-lock.json", packageRoot), "utf8"),
   ]);
@@ -43,9 +46,19 @@ test("vendored markdown dependencies have pinned versions and licenses", async (
   const packageMetadata = JSON.parse(packageJson);
   const lockMetadata = JSON.parse(packageLock);
   assert.match(purify, /DOMPurify 3\.4\.12/i);
+  assert.match(highlight, /Highlight\.js v11\.11\.1/i);
   assert.equal(packageMetadata.devDependencies.dompurify, "3.4.12");
+  assert.equal(packageMetadata.devDependencies["@highlightjs/cdn-assets"], "11.11.1");
   assert.equal(lockMetadata.packages[""].devDependencies.dompurify, "3.4.12");
+  assert.equal(
+    lockMetadata.packages[""].devDependencies["@highlightjs/cdn-assets"],
+    "11.11.1",
+  );
   assert.equal(lockMetadata.packages["node_modules/dompurify"].version, "3.4.12");
+  assert.equal(
+    lockMetadata.packages["node_modules/@highlightjs/cdn-assets"].version,
+    "11.11.1",
+  );
   assert.equal(
     lockMetadata.packages[""].engines.node,
     packageMetadata.engines.node,

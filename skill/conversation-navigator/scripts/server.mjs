@@ -15,6 +15,7 @@ const STATIC_FILES = new Map([
   ["/markdown.js", ["markdown.js", "text/javascript; charset=utf-8"]],
   ["/vendor/marked.esm.js", ["vendor/marked.esm.js", "text/javascript; charset=utf-8"]],
   ["/vendor/purify.es.mjs", ["vendor/purify.es.mjs", "text/javascript; charset=utf-8"]],
+  ["/vendor/highlight.min.js", ["vendor/highlight.min.js", "text/javascript; charset=utf-8"]],
 ]);
 
 const CONTENT_SECURITY_POLICY = [

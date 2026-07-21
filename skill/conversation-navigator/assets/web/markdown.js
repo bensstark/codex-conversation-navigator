@@ -1,4 +1,5 @@
 import createDOMPurify from "./vendor/purify.es.mjs";
+import hljs from "./vendor/highlight.min.js";
 import { marked } from "./vendor/marked.esm.js";
 
 const ALLOWED_TAGS = [
@@ -12,13 +13,16 @@ const ALLOWED_TAGS = [
 const ALLOWED_ATTR = [
   "href", "src", "alt", "title", "open", "type", "disabled", "checked", "align",
   "colspan", "rowspan", "span", "start", "reversed", "value", "width", "height",
-  "cite", "datetime", "dir", "lang", "scope",
+  "cite", "datetime", "dir", "lang", "scope", "class",
 ];
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const SAFE_TABLE_ALIGNMENTS = new Set(["left", "center", "right"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;
 const SAFE_IMAGE_DIMENSION = /^(?:[1-9]\d{0,3}|10000)$/;
+const SAFE_CODE_LANGUAGE_CLASS = /^language-([a-z0-9_+-]{1,50})$/i;
+const SAFE_HIGHLIGHT_CLASS = /^hljs-[a-z0-9_-]+$/i;
+const MAX_HIGHLIGHT_LENGTH = 100_000;
 const LEADING_ZERO_WIDTH = /^[\u200B\u200C\u200D\u200E\u200F\uFEFF]+/;
 
 function textFragment(document, text) {
@@ -52,6 +56,17 @@ function hasAllowedImage(document, value) {
 }
 
 function hardenFragment(document, fragment) {
+  for (const element of fragment.querySelectorAll("[class]")) {
+    const languageClass = element.matches("pre > code")
+      ? [...element.classList].find((className) => SAFE_CODE_LANGUAGE_CLASS.test(className))
+      : null;
+    if (languageClass) {
+      element.setAttribute("class", languageClass);
+    } else {
+      element.removeAttribute("class");
+    }
+  }
+
   for (const element of fragment.querySelectorAll("[width], [height]")) {
     if (!element.matches("img")) {
       element.removeAttribute("width");
@@ -113,9 +128,63 @@ function hardenFragment(document, fragment) {
   }
 }
 
+function sanitizeHighlight(purifier, html) {
+  const fragment = purifier.sanitize(html, {
+    ALLOWED_TAGS: ["span"],
+    ALLOWED_ATTR: ["class"],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+    RETURN_DOM_FRAGMENT: true,
+    SANITIZE_NAMED_PROPS: true,
+  });
+  for (const span of fragment.querySelectorAll("span[class]")) {
+    const safeClasses = [...span.classList].filter((className) =>
+      SAFE_HIGHLIGHT_CLASS.test(className));
+    if (safeClasses.length) {
+      span.setAttribute("class", safeClasses.join(" "));
+    } else {
+      span.removeAttribute("class");
+    }
+  }
+  return fragment;
+}
+
+function highlightCodeBlocks(fragment, purifier, highlighter) {
+  for (const code of fragment.querySelectorAll("pre > code")) {
+    const source = code.textContent ?? "";
+    if (!source.trim() || source.length > MAX_HIGHLIGHT_LENGTH) {
+      continue;
+    }
+
+    try {
+      const languageClass = [...code.classList]
+        .find((className) => SAFE_CODE_LANGUAGE_CLASS.test(className));
+      const language = languageClass?.match(SAFE_CODE_LANGUAGE_CLASS)?.[1];
+      let result;
+      if (language) {
+        if (!highlighter.getLanguage(language)) {
+          continue;
+        }
+        result = highlighter.highlight(source, { language, ignoreIllegals: true });
+      } else {
+        result = highlighter.highlightAuto(source);
+      }
+      if (typeof result?.value !== "string") {
+        continue;
+      }
+
+      code.replaceChildren(sanitizeHighlight(purifier, result.value));
+      code.classList.add("hljs");
+    } catch {
+      // Keep the already-sanitized plain code when highlighting fails.
+    }
+  }
+}
+
 export function renderMarkdown(document, source, {
   parse = (value) => marked.parse(value, { async: false, gfm: true }),
   createPurifier = createDOMPurify,
+  highlighter = hljs,
 } = {}) {
   const text = String(source ?? "");
   try {
@@ -134,6 +203,7 @@ export function renderMarkdown(document, source, {
       ALLOW_UNKNOWN_PROTOCOLS: false,
     });
     hardenFragment(document, fragment);
+    highlightCodeBlocks(fragment, purifier, highlighter);
     return fragment;
   } catch {
     return textFragment(document, text);
