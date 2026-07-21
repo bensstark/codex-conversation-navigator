@@ -42,6 +42,14 @@ test("web assets expose the navigation interface safely", async () => {
     css,
     /body\.sidebar-hidden \.outline-panel \{[\s\S]*?display:\s*none/,
   );
+  assert.match(
+    css,
+    /body\.topbar-hidden \.topbar \{[\s\S]*?display:\s*none/,
+  );
+  assert.match(
+    css,
+    /body\.topbar-hidden main \{[\s\S]*?height:\s*100%[\s\S]*?min-height:\s*100vh/,
+  );
   assert.match(css, /\.message-text h2/);
   assert.match(css, /\.message-text pre/);
   assert.match(css, /\.message-text table/);
@@ -121,16 +129,20 @@ test("frontend helpers filter messages, select genuine user articles, and naviga
   );
 });
 
-test("sidebar shortcut toggles only from non-editable reading targets", async () => {
+test("reading shortcuts toggle chrome only from non-editable targets", async () => {
   const {
     isSidebarToggleShortcut,
+    isTopbarToggleShortcut,
     toggleSidebar,
+    toggleTopbar,
   } = await import(
     "../skill/conversation-navigator/assets/web/app.js"
   );
 
   assert.equal(typeof isSidebarToggleShortcut, "function");
+  assert.equal(typeof isTopbarToggleShortcut, "function");
   assert.equal(typeof toggleSidebar, "function");
+  assert.equal(typeof toggleTopbar, "function");
 
   const dom = new JSDOM(`<!doctype html><body>
     <p id="reader">Conversation</p>
@@ -169,4 +181,21 @@ test("sidebar shortcut toggles only from non-editable reading targets", async ()
   assert.equal(document.body.classList.contains("sidebar-hidden"), true);
   toggleSidebar(document);
   assert.equal(document.body.classList.contains("sidebar-hidden"), false);
+
+  assert.equal(isTopbarToggleShortcut(shortcut({ key: "q" })), true);
+  assert.equal(isTopbarToggleShortcut(shortcut({ key: "Q" })), true);
+  assert.equal(isTopbarToggleShortcut(shortcut()), false);
+  assert.equal(isTopbarToggleShortcut(shortcut({ key: "q", ctrlKey: true })), false);
+  assert.equal(
+    isTopbarToggleShortcut(shortcut({
+      key: "q",
+      target: document.getElementById("input"),
+    })),
+    false,
+  );
+
+  toggleTopbar(document);
+  assert.equal(document.body.classList.contains("topbar-hidden"), true);
+  toggleTopbar(document);
+  assert.equal(document.body.classList.contains("topbar-hidden"), false);
 });

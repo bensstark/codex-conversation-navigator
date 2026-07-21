@@ -9,9 +9,9 @@ const EDITABLE_TARGET_SELECTOR = [
   '[contenteditable]:not([contenteditable="false"])',
 ].join(", ");
 
-export function isSidebarToggleShortcut(event) {
+function isReadingShortcut(event, key) {
   if (typeof event?.key !== "string"
-      || event.key.toLocaleLowerCase() !== "s"
+      || event.key.toLocaleLowerCase() !== key
       || event.ctrlKey
       || event.altKey
       || event.metaKey
@@ -22,8 +22,20 @@ export function isSidebarToggleShortcut(event) {
     || !event.target.closest(EDITABLE_TARGET_SELECTOR);
 }
 
+export function isSidebarToggleShortcut(event) {
+  return isReadingShortcut(event, "s");
+}
+
+export function isTopbarToggleShortcut(event) {
+  return isReadingShortcut(event, "q");
+}
+
 export function toggleSidebar(documentNode) {
   documentNode?.body?.classList.toggle("sidebar-hidden");
+}
+
+export function toggleTopbar(documentNode) {
+  documentNode?.body?.classList.toggle("topbar-hidden");
 }
 
 export function filterNavigation(navigation, query) {
@@ -315,6 +327,8 @@ function bootstrap() {
   document.addEventListener("keydown", (event) => {
     if (isSidebarToggleShortcut(event)) {
       toggleSidebar(document);
+    } else if (isTopbarToggleShortcut(event)) {
+      toggleTopbar(document);
     }
   });
 

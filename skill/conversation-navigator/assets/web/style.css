@@ -112,6 +112,15 @@ body.sidebar-hidden .outline-panel {
   display: none;
 }
 
+body.topbar-hidden .topbar {
+  display: none;
+}
+
+body.topbar-hidden main {
+  height: 100%;
+  min-height: 100vh;
+}
+
 .outline-panel {
   min-height: 0;
   display: flex;
