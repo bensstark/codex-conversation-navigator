@@ -4,9 +4,13 @@ import { marked } from "./vendor/marked.esm.js";
 const FORBID_TAGS = [
   "script", "style", "iframe", "frame", "frameset", "object", "embed", "applet",
   "base", "meta", "link", "form", "button", "textarea", "select", "option",
-  "video", "audio", "source", "track",
+  "video", "audio", "source", "track", "dialog", "template", "label",
 ];
-const FORBID_ATTR = ["style", "id", "name", "class", "srcset"];
+const FORBID_ATTR = [
+  "style", "id", "name", "class", "srcset", "download", "ping", "for",
+  "tabindex", "draggable", "contenteditable", "autofocus", "popover",
+  "popovertarget", "popovertargetaction",
+];
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;

@@ -44,6 +44,7 @@ const answer = 42;
   assert.ok(container.querySelector("table"));
   assert.ok(container.querySelector("blockquote"));
   assert.equal(container.querySelector("details summary")?.textContent, "More");
+  assert.equal(container.querySelector("details")?.hasAttribute("open"), true);
 });
 
 test("renderMarkdown removes active content and unsafe attributes", () => {
@@ -121,6 +122,58 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
     ["checked", "disabled", "type"],
   );
   assert.equal(inputs[0].getAttribute("type"), "checkbox");
+});
+
+test("renderMarkdown keeps disclosures but removes other interactive controls", () => {
+  const { container } = render(`<details open><summary>Approved</summary><p>visible</p></details>
+<dialog open>dialog</dialog>
+<template><a href="https://bad.test">nested link</a><input type="checkbox" disabled></template>
+<label for="outside">outside label</label>`);
+
+  const details = container.querySelector("details");
+  assert.equal(details?.hasAttribute("open"), true);
+  assert.equal(details?.querySelector("summary")?.textContent, "Approved");
+  assert.equal(container.querySelector("dialog, template, label"), null);
+  assert.equal(container.querySelector("a, input"), null);
+});
+
+test("renderMarkdown strips control attributes and fixes link navigation", () => {
+  const { container } = render(`<p for="outside" tabindex="0" draggable="true" contenteditable="true" autofocus popover="manual" popovertarget="outside" popovertargetaction="show">copy</p>
+<a href="https://example.com/file" download="file.txt" ping="https://tracker.test">download link</a>`);
+
+  assert.equal(
+    container.querySelector(
+      "[download], [ping], [for], [tabindex], [draggable], [contenteditable], [autofocus], [popover], [popovertarget], [popovertargetaction]",
+    ),
+    null,
+  );
+
+  const link = container.querySelector("a");
+  assert.equal(link?.getAttribute("href"), "https://example.com/file");
+  assert.deepEqual(
+    [...link.attributes].map(({ name }) => name).sort(),
+    ["href", "referrerpolicy", "rel", "target"],
+  );
+  assert.equal(link.getAttribute("target"), "_blank");
+  assert.equal(link.getAttribute("rel"), "noopener noreferrer");
+  assert.equal(link.getAttribute("referrerpolicy"), "no-referrer");
+});
+
+test("renderMarkdown rejects obfuscated schemes and allows protocol-relative URLs", () => {
+  const { container } = render(`<a href="JaVaScRiPt:alert(1)">mixed case</a>
+<a href="jav&#x61;script:alert(1)">decoded entity</a>
+<a href="//example.com/path">protocol relative</a>`);
+
+  const links = [...container.querySelectorAll("a")];
+  assert.equal(links.length, 3);
+  assert.equal(links[0].hasAttribute("href"), false);
+  assert.equal(links[1].hasAttribute("href"), false);
+  assert.equal(links[2].getAttribute("href"), "//example.com/path");
+  for (const link of links) {
+    assert.equal(link.getAttribute("target"), "_blank");
+    assert.equal(link.getAttribute("rel"), "noopener noreferrer");
+    assert.equal(link.getAttribute("referrerpolicy"), "no-referrer");
+  }
 });
 
 test("renderMarkdown falls back to plain text when rendering is unavailable", () => {
