@@ -37,6 +37,14 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text img/);
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
+  const checkboxRule = css.match(
+    /\.message-text input\[type="checkbox"\] \{(?<declarations>[\s\S]*?)\n\}/,
+  )?.groups?.declarations;
+  assert.ok(checkboxRule);
+  assert.match(checkboxRule, /padding:\s*0/);
+  assert.match(checkboxRule, /border:\s*0/);
+  assert.match(checkboxRule, /background:\s*transparent/);
+  assert.match(checkboxRule, /box-shadow:\s*none/);
 });
 
 test("frontend helpers filter messages and detect bottom proximity", async () => {

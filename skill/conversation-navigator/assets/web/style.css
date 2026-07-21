@@ -349,6 +349,10 @@ main {
 .message-text input[type="checkbox"] {
   width: auto;
   margin: 0 0.45em 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   accent-color: var(--accent);
 }
 
