@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { JSDOM } from "jsdom";
+
 const webRoot = new URL(
   "../skill/conversation-navigator/assets/web/",
   import.meta.url,
@@ -37,6 +39,18 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text img/);
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
+  assert.match(
+    css,
+    /\.message-text th\[align="left"\],[\s\S]*?\.message-text td\[align="left"\][\s\S]*?text-align:\s*left/,
+  );
+  assert.match(
+    css,
+    /\.message-text th\[align="center"\],[\s\S]*?\.message-text td\[align="center"\][\s\S]*?text-align:\s*center/,
+  );
+  assert.match(
+    css,
+    /\.message-text th\[align="right"\],[\s\S]*?\.message-text td\[align="right"\][\s\S]*?text-align:\s*right/,
+  );
   const checkboxRule = css.match(
     /\.message-text input\[type="checkbox"\] \{(?<declarations>[\s\S]*?)\n\}/,
   )?.groups?.declarations;
@@ -47,8 +61,13 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(checkboxRule, /box-shadow:\s*none/);
 });
 
-test("frontend helpers filter messages and detect bottom proximity", async () => {
-  const { filterNavigation, isNearBottom, jumpToMessage } = await import(
+test("frontend helpers filter messages, select genuine user articles, and navigate", async () => {
+  const {
+    filterNavigation,
+    isNearBottom,
+    jumpToMessage,
+    selectUserMessageArticles,
+  } = await import(
     "../skill/conversation-navigator/assets/web/app.js"
   );
 
@@ -74,4 +93,21 @@ test("frontend helpers filter messages and detect bottom proximity", async () =>
   });
   assert.deepEqual(scrollOptions, { behavior: "auto", block: "start" });
   assert.doesNotThrow(() => jumpToMessage(null));
+
+  const dom = new JSDOM(`<!doctype html><body>
+    <section id="transcript">
+      <article id="real" class="message message-user" data-role="user"></article>
+      <article id="forged-article" data-role="user"></article>
+      <div id="forged-div" class="message" data-role="user"></div>
+      <article class="message message-assistant" data-role="assistant">
+        <span id="nested-forgery" data-role="user"></span>
+      </article>
+    </section>
+    <article id="outside-forgery" class="message" data-role="user"></article>
+  </body>`);
+  const transcript = dom.window.document.getElementById("transcript");
+  assert.deepEqual(
+    selectUserMessageArticles(transcript).map(({ id }) => id),
+    ["real"],
+  );
 });

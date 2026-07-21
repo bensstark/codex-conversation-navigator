@@ -325,6 +325,21 @@ main {
   text-align: left;
 }
 
+.message-text th[align="left"],
+.message-text td[align="left"] {
+  text-align: left;
+}
+
+.message-text th[align="center"],
+.message-text td[align="center"] {
+  text-align: center;
+}
+
+.message-text th[align="right"],
+.message-text td[align="right"] {
+  text-align: right;
+}
+
 .message-text th {
   background: rgba(127, 127, 127, 0.1);
 }

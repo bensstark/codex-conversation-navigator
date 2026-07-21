@@ -6,7 +6,7 @@
 
 **Architecture:** Keep transcript projection and the local API unchanged. Add one browser-only `markdown.js` boundary that runs the pinned local Marked bundle, sanitizes the result with a pinned local DOMPurify bundle, post-processes the returned `DocumentFragment`, and hands only that fragment to `app.js`. Serve the three browser modules through the existing explicit static allowlist and reinforce the sanitizer with a restrictive Content Security Policy.
 
-**Tech Stack:** Node.js 20.19+ ES modules, Node built-in test runner, jsdom 29.1.1 for development tests, Marked 18.0.6, DOMPurify 3.4.7, vanilla browser JavaScript and CSS.
+**Tech Stack:** Node.js 20.19+ ES modules, Node built-in test runner, jsdom 29.1.1 for development tests, Marked 18.0.6, DOMPurify 3.4.12, vanilla browser JavaScript and CSS.
 
 ## Global Constraints
 
@@ -136,7 +136,7 @@ Expected: FAIL because the vendor files do not exist, the server returns 404 for
 Run:
 
 ```bash
-npm install --save-dev --save-exact jsdom@29.1.1 marked@18.0.6 dompurify@3.4.7
+npm install --save-dev --save-exact jsdom@29.1.1 marked@18.0.6 dompurify@3.4.12
 mkdir -p skill/conversation-navigator/assets/web/vendor
 cp node_modules/marked/lib/marked.esm.js skill/conversation-navigator/assets/web/vendor/marked.esm.js
 cp node_modules/marked/LICENSE skill/conversation-navigator/assets/web/vendor/MARKED-LICENSE
@@ -818,7 +818,7 @@ Run:
 ```bash
 node --version
 npm test
-npm audit --omit=dev
+npm audit --registry=https://registry.npmjs.org
 python3 /home/user/.codex/skills/.system/skill-creator/scripts/quick_validate.py skill/conversation-navigator
 git diff --check
 ```
@@ -826,8 +826,8 @@ git diff --check
 Expected:
 
 - Node is 20.19 or newer.
-- 23 tests PASS with zero failures.
-- The production dependency audit reports no production dependencies or vulnerabilities.
+- 26 tests PASS with zero failures.
+- The full official-registry dependency audit includes development dependencies and reports zero vulnerabilities.
 - Skill validation prints `Skill is valid!`.
 - `git diff --check` exits with no output.
 
@@ -922,11 +922,11 @@ Run:
 
 ```bash
 git status --short
-git diff --stat HEAD~3..HEAD
+git diff --stat da09919..HEAD
 git log --oneline --max-count=8
 ```
 
-Expected: no uncommitted files; exactly the dependency/server, renderer, and integration commits sit above the design and plan commits. Review every changed file for a direct connection to Markdown rendering or its tests.
+Expected: no uncommitted files; all feature commits after `da09919` are visible. Review every changed file for a direct connection to Markdown rendering or its tests.
 
 - [ ] **Step 6: Integrate, validate the installed path, and restart the navigator**
 
@@ -939,7 +939,7 @@ python3 /home/user/.codex/skills/.system/skill-creator/scripts/quick_validate.py
 readlink -f /home/user/.codex/skills/conversation-navigator
 ```
 
-Expected: 23 tests PASS, `Skill is valid!`, and the symlink resolves to `/home/user/codex-conversation-navigator/skill/conversation-navigator`.
+Expected: 26 tests PASS, `Skill is valid!`, and the symlink resolves to `/home/user/codex-conversation-navigator/skill/conversation-navigator`.
 
 Stop the previously running navigator with `Ctrl+C`, then launch the installed version without opening another window automatically:
 

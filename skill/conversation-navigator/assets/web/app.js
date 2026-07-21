@@ -20,6 +20,11 @@ export function jumpToMessage(target) {
   target?.scrollIntoView({ behavior: "auto", block: "start" });
 }
 
+export function selectUserMessageArticles(transcript) {
+  return [...transcript.children].filter((child) =>
+    child.matches('article.message[data-role="user"]'));
+}
+
 function createElement(tagName, className, text) {
   const node = document.createElement(tagName);
   if (className) {
@@ -159,7 +164,7 @@ function bootstrap() {
       threshold: 0,
     });
 
-    for (const message of elements.transcript.querySelectorAll("[data-role='user']")) {
+    for (const message of selectUserMessageArticles(elements.transcript)) {
       state.observer.observe(message);
     }
   }

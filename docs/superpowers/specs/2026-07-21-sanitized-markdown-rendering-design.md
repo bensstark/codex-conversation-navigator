@@ -19,7 +19,7 @@ Codex App Server and the navigator HTTP API preserve Markdown source correctly. 
 
 ## Selected Approach
 
-Bundle pinned browser ESM distributions of Marked 18.0.6 and DOMPurify 3.4.7 inside the skill. Marked converts Markdown and raw HTML into HTML; DOMPurify sanitizes that result before it reaches the transcript DOM.
+Bundle pinned browser ESM distributions of Marked 18.0.6 and DOMPurify 3.4.12 inside the skill. Marked converts Markdown and raw HTML into HTML; DOMPurify sanitizes that result before it reaches the transcript DOM.
 
 This approach is selected over a custom Markdown parser because complete Markdown, tables, nested structures, and raw HTML are too broad for a small reliable parser. It is selected over a custom regex sanitizer because HTML/XSS safety requires browser-aware parsing. The libraries are self-hosted so rendering does not depend on a CDN or send transcript text to an external service.
 

@@ -3,6 +3,7 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const skillRoot = new URL("../skill/conversation-navigator/", import.meta.url);
+const packageRoot = new URL("../", import.meta.url);
 
 test("skill package documents the launch workflow without placeholders", async () => {
   const skill = await readFile(new URL("SKILL.md", skillRoot), "utf8");
@@ -31,11 +32,22 @@ test("skill package includes its declared entrypoint and web assets", async () =
 });
 
 test("vendored markdown dependencies have pinned versions and licenses", async () => {
-  const [marked, purify] = await Promise.all([
+  const [marked, purify, packageJson, packageLock] = await Promise.all([
     readFile(new URL("assets/web/vendor/marked.esm.js", skillRoot), "utf8"),
     readFile(new URL("assets/web/vendor/purify.es.mjs", skillRoot), "utf8"),
+    readFile(new URL("package.json", packageRoot), "utf8"),
+    readFile(new URL("package-lock.json", packageRoot), "utf8"),
   ]);
 
   assert.match(marked, /marked v18\.0\.6/i);
-  assert.match(purify, /DOMPurify 3\.4\.7/i);
+  const packageMetadata = JSON.parse(packageJson);
+  const lockMetadata = JSON.parse(packageLock);
+  assert.match(purify, /DOMPurify 3\.4\.12/i);
+  assert.equal(packageMetadata.devDependencies.dompurify, "3.4.12");
+  assert.equal(lockMetadata.packages[""].devDependencies.dompurify, "3.4.12");
+  assert.equal(lockMetadata.packages["node_modules/dompurify"].version, "3.4.12");
+  assert.equal(
+    lockMetadata.packages[""].engines.node,
+    packageMetadata.engines.node,
+  );
 });

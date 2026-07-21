@@ -157,6 +157,7 @@ export async function createNavigatorServer({
       response.writeHead(200, {
         "content-type": contentType,
         "content-security-policy": CONTENT_SECURITY_POLICY,
+        "referrer-policy": "no-referrer",
         "cache-control": "no-store",
         "x-content-type-options": "nosniff",
       });

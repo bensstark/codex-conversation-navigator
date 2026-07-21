@@ -1,18 +1,22 @@
 import createDOMPurify from "./vendor/purify.es.mjs";
 import { marked } from "./vendor/marked.esm.js";
 
-const FORBID_TAGS = [
-  "script", "style", "iframe", "frame", "frameset", "object", "embed", "applet",
-  "base", "meta", "link", "form", "button", "textarea", "select", "option",
-  "video", "audio", "source", "track", "dialog", "template", "label",
+const ALLOWED_TAGS = [
+  "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "em", "strong", "del",
+  "a", "img", "blockquote", "ol", "ul", "li", "code", "pre", "hr", "table",
+  "caption", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col",
+  "input", "div", "span", "b", "i", "u", "s", "ins", "abbr", "cite", "dfn",
+  "kbd", "mark", "q", "samp", "small", "sub", "sup", "time", "var", "ruby",
+  "rp", "rt", "bdi", "bdo", "wbr", "figure", "figcaption", "details", "summary",
 ];
-const FORBID_ATTR = [
-  "style", "id", "name", "class", "srcset", "download", "ping", "for",
-  "tabindex", "draggable", "contenteditable", "autofocus", "popover",
-  "popovertarget", "popovertargetaction",
+const ALLOWED_ATTR = [
+  "href", "src", "alt", "title", "open", "type", "disabled", "checked", "align",
+  "colspan", "rowspan", "span", "start", "reversed", "value", "width", "height",
+  "cite", "datetime", "dir", "lang", "scope",
 ];
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+const SAFE_TABLE_ALIGNMENTS = new Set(["left", "center", "right"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;
 const LEADING_ZERO_WIDTH = /^[\u200B\u200C\u200D\u200E\u200F\uFEFF]+/;
 
@@ -47,6 +51,14 @@ function hasAllowedImage(document, value) {
 }
 
 function hardenFragment(document, fragment) {
+  for (const element of fragment.querySelectorAll("[align]")) {
+    const isTableCell = element.matches("th, td");
+    const alignment = element.getAttribute("align")?.toLowerCase();
+    if (!isTableCell || !SAFE_TABLE_ALIGNMENTS.has(alignment)) {
+      element.removeAttribute("align");
+    }
+  }
+
   for (const link of fragment.querySelectorAll("a")) {
     const href = link.getAttribute("href");
     if (href !== null && !hasAllowedLink(document, href)) {
@@ -99,12 +111,13 @@ export function renderMarkdown(document, source, {
     }
     const html = parse(text.replace(LEADING_ZERO_WIDTH, ""));
     const fragment = purifier.sanitize(html, {
-      USE_PROFILES: { html: true },
+      ALLOWED_TAGS,
+      ALLOWED_ATTR,
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
       RETURN_DOM_FRAGMENT: true,
       SANITIZE_NAMED_PROPS: true,
       ALLOW_UNKNOWN_PROTOCOLS: false,
-      FORBID_TAGS,
-      FORBID_ATTR,
     });
     hardenFragment(document, fragment);
     return fragment;

@@ -88,6 +88,7 @@ test("serves static assets and protects thread APIs", async (t) => {
   const index = await fetch(apiUrl(navigator.url, "/"));
   assert.equal(index.status, 200);
   assert.equal(await index.text(), "<html>navigator</html>");
+  assert.equal(index.headers.get("referrer-policy"), "no-referrer");
   assert.match(index.headers.get("content-security-policy"), /default-src 'self'/);
   const policy = index.headers.get("content-security-policy");
   assert.match(policy, /img-src 'self' data: http: https:/);
@@ -99,14 +100,23 @@ test("serves static assets and protects thread APIs", async (t) => {
   const markdown = await fetch(apiUrl(navigator.url, "/markdown.js"));
   assert.equal(markdown.status, 200);
   assert.match(markdown.headers.get("content-type"), /^text\/javascript/);
+  assert.equal(markdown.headers.get("referrer-policy"), "no-referrer");
+
+  for (const path of ["/app.js", "/style.css"]) {
+    const asset = await fetch(apiUrl(navigator.url, path));
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers.get("referrer-policy"), "no-referrer");
+  }
 
   const marked = await fetch(apiUrl(navigator.url, "/vendor/marked.esm.js"));
   assert.equal(marked.status, 200);
   assert.match(marked.headers.get("content-type"), /^text\/javascript/);
+  assert.equal(marked.headers.get("referrer-policy"), "no-referrer");
 
   const purify = await fetch(apiUrl(navigator.url, "/vendor/purify.es.mjs"));
   assert.equal(purify.status, 200);
   assert.match(purify.headers.get("content-type"), /^text\/javascript/);
+  assert.equal(purify.headers.get("referrer-policy"), "no-referrer");
 
   const unlistedVendorFile = await fetch(
     apiUrl(navigator.url, "/vendor/DOMPURIFY-LICENSE"),

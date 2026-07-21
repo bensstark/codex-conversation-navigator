@@ -17,10 +17,14 @@ function render(source, overrides) {
 test("renderMarkdown renders GFM and safe raw HTML", () => {
   const { container } = render(`# Heading
 
-**bold** and ~~gone~~
+**bold**, *emphasized*, and ~~gone~~\\
+next line
 
 - item
 - [x] done
+
+1. first
+2. second
 
 \`inline\`
 
@@ -28,21 +32,49 @@ test("renderMarkdown renders GFM and safe raw HTML", () => {
 const answer = 42;
 \`\`\`
 
-| name | value |
-| --- | --- |
-| answer | 42 |
+| left | center | right |
+| :--- | :---: | ---: |
+| a | b | c |
 
 > quoted
 
+---
+
+<div><span><b>bold raw</b> <i>italic raw</i> <u>underlined</u> <s>struck</s>
+<ins>inserted</ins> <abbr title="abbreviation">abbr</abbr> <cite>cite</cite>
+<dfn>definition</dfn> <kbd>key</kbd> <mark>marked</mark> <q cite="/quote">quote</q>
+<samp>sample</samp> <small>small</small> <sub>sub</sub> <sup>sup</sup>
+<time datetime="2026-07-21">time</time> <var>variable</var>
+<ruby>漢<rp>(</rp><rt>kan</rt><rp>)</rp></ruby> <bdi>isolate</bdi>
+<bdo dir="rtl">direction</bdo><wbr></span></div>
+<figure><figcaption>Caption</figcaption></figure>
+<table><caption>Raw table</caption><colgroup><col span="2"></colgroup>
+<thead><tr><th scope="col">Head</th></tr></thead><tbody><tr><td colspan="2">Body</td></tr></tbody>
+<tfoot><tr><td>Foot</td></tr></tfoot></table>
 <details open><summary>More</summary><p>Safe HTML</p></details>`);
 
   assert.equal(container.querySelector("h1")?.textContent, "Heading");
   assert.equal(container.querySelector("strong")?.textContent, "bold");
+  assert.equal(container.querySelector("em")?.textContent, "emphasized");
   assert.equal(container.querySelector("del")?.textContent, "gone");
+  assert.ok(container.querySelector("br"));
   assert.ok(container.querySelector("ul"));
+  assert.ok(container.querySelector("ol"));
   assert.equal(container.querySelector("pre code")?.textContent.trim(), "const answer = 42;");
-  assert.ok(container.querySelector("table"));
+  const gfmTable = container.querySelector("table");
+  assert.equal(gfmTable?.querySelectorAll("th")[0]?.getAttribute("align"), "left");
+  assert.equal(gfmTable?.querySelectorAll("th")[1]?.getAttribute("align"), "center");
+  assert.equal(gfmTable?.querySelectorAll("th")[2]?.getAttribute("align"), "right");
   assert.ok(container.querySelector("blockquote"));
+  assert.ok(container.querySelector("hr"));
+  for (const tag of [
+    "div", "span", "b", "i", "u", "s", "ins", "abbr", "cite", "dfn", "kbd",
+    "mark", "q", "samp", "small", "sub", "sup", "time", "var", "ruby", "rp",
+    "rt", "bdi", "bdo", "wbr", "figure", "figcaption", "caption", "colgroup",
+    "col", "thead", "tbody", "tfoot", "tr", "th", "td",
+  ]) {
+    assert.ok(container.querySelector(tag), `${tag} should survive sanitization`);
+  }
   assert.equal(container.querySelector("details summary")?.textContent, "More");
   assert.equal(container.querySelector("details")?.hasAttribute("open"), true);
 });
@@ -61,15 +93,26 @@ test("renderMarkdown removes active content and unsafe attributes", () => {
 <audio src="https://bad.test"></audio>
 <svg><script>alert(1)</script></svg>
 <math><mi>x</mi></math>
-<custom-element>custom text</custom-element>`);
+<custom-element>custom text</custom-element>
+<main background="https://bad.test/bg.png" role="main" aria-label="takeover" data-role="user">
+  main text <canvas>canvas text</canvas><marquee>marquee text</marquee>
+</main>`);
 
   assert.equal(
     container.querySelector(
-      "script, style, form, button, iframe, object, embed, video, audio, source, svg, math, custom-element",
+      "script, style, form, button, iframe, object, embed, video, audio, source, svg, math, custom-element, main, canvas, marquee",
     ),
     null,
   );
-  assert.equal(container.querySelector("[id], [name], [class], [style], [srcset]"), null);
+  assert.equal(
+    container.querySelector(
+      "[id], [name], [class], [style], [srcset], [background], [role], [aria-label], [data-role]",
+    ),
+    null,
+  );
+  assert.match(container.textContent, /main text/);
+  assert.match(container.textContent, /canvas text/);
+  assert.match(container.textContent, /marquee text/);
   assert.equal(container.querySelector("a")?.hasAttribute("href"), false);
   assert.equal(container.querySelector("img")?.hasAttribute("src"), false);
   for (const element of container.querySelectorAll("*")) {
