@@ -18,6 +18,7 @@ const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const SAFE_TABLE_ALIGNMENTS = new Set(["left", "center", "right"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;
+const SAFE_IMAGE_DIMENSION = /^(?:[1-9]\d{0,3}|10000)$/;
 const LEADING_ZERO_WIDTH = /^[\u200B\u200C\u200D\u200E\u200F\uFEFF]+/;
 
 function textFragment(document, text) {
@@ -51,6 +52,13 @@ function hasAllowedImage(document, value) {
 }
 
 function hardenFragment(document, fragment) {
+  for (const element of fragment.querySelectorAll("[width], [height]")) {
+    if (!element.matches("img")) {
+      element.removeAttribute("width");
+      element.removeAttribute("height");
+    }
+  }
+
   for (const element of fragment.querySelectorAll("[align]")) {
     const isTableCell = element.matches("th, td");
     const alignment = element.getAttribute("align")?.toLowerCase();
@@ -73,6 +81,12 @@ function hardenFragment(document, fragment) {
     const src = image.getAttribute("src");
     if (src !== null && !hasAllowedImage(document, src)) {
       image.removeAttribute("src");
+    }
+    for (const attribute of ["width", "height"]) {
+      const value = image.getAttribute(attribute);
+      if (value !== null && !SAFE_IMAGE_DIMENSION.test(value)) {
+        image.removeAttribute(attribute);
+      }
     }
     image.setAttribute("loading", "lazy");
     image.setAttribute("decoding", "async");

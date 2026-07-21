@@ -34,8 +34,8 @@ Add a focused browser module that:
 1. Normalizes leading zero-width characters that can interfere with Markdown parsing.
 2. Parses with Marked in GFM mode.
 3. Sanitizes the generated HTML with a DOMPurify instance bound to the current browser window.
-4. Requests an HTML-only profile and a `DocumentFragment` return value.
-5. Applies fixed safe link and image attributes after sanitization.
+4. Sanitizes to a `DocumentFragment` with explicit `ALLOWED_TAGS` and `ALLOWED_ATTR` lists, with data and ARIA attributes disabled.
+5. Post-processes the fragment to scope table alignment and dimensions, validate URLs, fix safe link/image attributes, and rebuild task checkboxes.
 6. Returns a plain-text fragment if parsing, sanitization, or DOMPurify browser support fails.
 
 `app.js` replaces the message body's children with the returned fragment. It must never write untrusted or merely parsed markup directly to `innerHTML`, `outerHTML`, `insertAdjacentHTML`, or `document.write`.
@@ -55,25 +55,27 @@ Scope Markdown styles beneath `.message-text` so raw content cannot affect the a
 
 ## Sanitization Policy
 
-Use DOMPurify's HTML profile with unknown protocols disabled and named-property protection enabled.
+Use explicit DOMPurify `ALLOWED_TAGS` and `ALLOWED_ATTR` lists with unknown protocols disabled, named-property protection enabled, and both `ALLOW_DATA_ATTR: false` and `ALLOW_ARIA_ATTR: false`. Do not use the broad HTML profile. The element list is limited to complete GFM output, approved table structure and safe text-formatting/container elements, `details`/`summary`, and `input` solely for the later disabled task-checkbox rebuild. The attribute list is limited to approved content metadata and attributes that are validated or replaced during post-processing.
 
 Remove at minimum:
 
 - `script`, `style`, `iframe`, `frame`, `frameset`, `object`, `embed`, `applet`, `base`, `meta`, and `link` elements.
 - `form`, `button`, `textarea`, `select`, and `option` elements, plus every `input` except a disabled task-list checkbox.
 - `video`, `audio`, `source`, and `track` elements.
-- All inline `style`, `id`, `name`, `class`, and `srcset` attributes.
+- All inline `style`, `id`, `name`, `class`, `srcset`, `background`, `role`, ARIA, and data attributes.
 - Event handler attributes and other attributes DOMPurify considers unsafe.
 - SVG, MathML, custom elements, and executable or unknown URL schemes.
 
-Keep safe HTML formatting elements such as `details`, `summary`, tables, text formatting, lists, code, anchors, and images.
+Keep approved safe HTML formatting elements such as `div`, `span`, text-formatting and ruby elements, figures, tables, lists, code, anchors, and images. Keep user-approved `details`/`summary`, including `open`. Do not admit application landmarks or controls, `canvas`, `marquee`, forms, media, frames/objects, SVG/MathML, custom elements, `template`, `dialog`, or `label`.
 
 After sanitization:
 
 - Accept link destinations only when they resolve to `http:`, `https:`, `mailto:`, a relative URL, or a same-document fragment. Remove other `href` values.
 - Set every surviving link to `target="_blank"`, `rel="noopener noreferrer"`, and `referrerpolicy="no-referrer"`.
 - Accept image sources only for `http:`, `https:`, or raster `data:image/` media types. Remove other `src` values, including SVG data images.
+- Remove `width` and `height` from every non-image element. On images, keep each dimension only when its raw value is a canonical positive integer from 1 through 10000 inclusive.
 - Set every surviving image to `loading="lazy"`, `decoding="async"`, and `referrerpolicy="no-referrer"`.
+- Keep `align` only on table header/data cells and only for `left`, `center`, or `right`.
 - Keep only disabled `input[type="checkbox"]` elements inside list items, strip all other attributes, and restore only `type`, `disabled`, and an optional `checked` state.
 
 The user accepts that remote images still reveal network metadata such as IP address and load time to the image host.
@@ -108,10 +110,11 @@ Test successful rendering of:
 - Headings, emphasis, links, lists, task lists, fenced code, tables, images, and safe raw HTML.
 - External link target, relationship, and referrer attributes.
 - Remote image source, lazy loading, asynchronous decoding, and referrer attributes.
+- Canonical image dimensions from 1 through 10000, plus GFM left/center/right table alignment.
 
 Test removal of:
 
-- Scripts, event attributes, dangerous protocols, styles, interactive form controls, iframes, embedded objects, active media, SVG, MathML, custom elements, dangerous classes/IDs, and `srcset`.
+- Scripts, event attributes, dangerous protocols, styles, interactive form controls, iframes, embedded objects, active media, SVG, MathML, custom elements, dangerous classes/IDs, `srcset`, misplaced dimensions, and invalid image dimensions.
 
 Also test:
 

@@ -76,6 +76,7 @@ After the existing index assertions in `serves static assets and protects thread
 
 ```js
 const policy = index.headers.get("content-security-policy");
+assert.equal(index.headers.get("referrer-policy"), "no-referrer");
 assert.match(policy, /img-src 'self' data: http: https:/);
 assert.match(policy, /media-src 'none'/);
 assert.match(policy, /frame-src 'none'/);
@@ -85,10 +86,12 @@ assert.match(policy, /form-action 'none'/);
 const marked = await fetch(apiUrl(navigator.url, "/vendor/marked.esm.js"));
 assert.equal(marked.status, 200);
 assert.match(marked.headers.get("content-type"), /^text\/javascript/);
+assert.equal(marked.headers.get("referrer-policy"), "no-referrer");
 
 const purify = await fetch(apiUrl(navigator.url, "/vendor/purify.es.mjs"));
 assert.equal(purify.status, 200);
 assert.match(purify.headers.get("content-type"), /^text\/javascript/);
+assert.equal(purify.headers.get("referrer-policy"), "no-referrer");
 
 const unlistedVendorFile = await fetch(
   apiUrl(navigator.url, "/vendor/DOMPURIFY-LICENSE"),
@@ -117,7 +120,7 @@ test("vendored markdown dependencies have pinned versions and licenses", async (
   ]);
 
   assert.match(marked, /marked v18\.0\.6/i);
-  assert.match(purify, /DOMPurify 3\.4\.7/i);
+  assert.match(purify, /DOMPurify 3\.4\.12/i);
 });
 ```
 
@@ -180,6 +183,8 @@ Replace the current image directive and add the four active-content directives:
 ```
 
 Keep all existing CSP directives unchanged.
+
+Add `"referrer-policy": "no-referrer"` to the header map for every successful static response, and assert that header on each exposed static route.
 
 - [ ] **Step 6: Run focused and complete tests**
 
@@ -363,6 +368,8 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
 });
 ```
 
+Use the real default renderer for these regressions. Assert exact surviving `href` values for relative, `mailto:`, fragment, and protocol-relative HTTP(S) links, plus exact remote and raster-data image `src` values. Add raw `table`/`td`/`hr` width/height fixtures and image dimensions covering canonical `1` through `10000` values as well as zero, negative, decimal, unit/percentage, leading-zero, non-number, and over-limit values.
+
 - [ ] **Step 4: Add parser, sanitizer, and unsupported-browser fallback tests**
 
 Append:
@@ -441,15 +448,24 @@ Create `skill/conversation-navigator/assets/web/markdown.js`:
 import createDOMPurify from "./vendor/purify.es.mjs";
 import { marked } from "./vendor/marked.esm.js";
 
-const FORBID_TAGS = [
-  "script", "style", "iframe", "frame", "frameset", "object", "embed", "applet",
-  "base", "meta", "link", "form", "button", "textarea", "select", "option",
-  "video", "audio", "source", "track",
+const ALLOWED_TAGS = [
+  "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "em", "strong", "del",
+  "a", "img", "blockquote", "ol", "ul", "li", "code", "pre", "hr", "table",
+  "caption", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col",
+  "input", "div", "span", "b", "i", "u", "s", "ins", "abbr", "cite", "dfn",
+  "kbd", "mark", "q", "samp", "small", "sub", "sup", "time", "var", "ruby",
+  "rp", "rt", "bdi", "bdo", "wbr", "figure", "figcaption", "details", "summary",
 ];
-const FORBID_ATTR = ["style", "id", "name", "class", "srcset"];
+const ALLOWED_ATTR = [
+  "href", "src", "alt", "title", "open", "type", "disabled", "checked", "align",
+  "colspan", "rowspan", "span", "start", "reversed", "value", "width", "height",
+  "cite", "datetime", "dir", "lang", "scope",
+];
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+const SAFE_TABLE_ALIGNMENTS = new Set(["left", "center", "right"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;
+const SAFE_IMAGE_DIMENSION = /^(?:[1-9]\d{0,3}|10000)$/;
 const LEADING_ZERO_WIDTH = /^[\u200B\u200C\u200D\u200E\u200F\uFEFF]+/;
 
 function textFragment(document, text) {
@@ -483,6 +499,21 @@ function hasAllowedImage(document, value) {
 }
 
 function hardenFragment(document, fragment) {
+  for (const element of fragment.querySelectorAll("[width], [height]")) {
+    if (!element.matches("img")) {
+      element.removeAttribute("width");
+      element.removeAttribute("height");
+    }
+  }
+
+  for (const element of fragment.querySelectorAll("[align]")) {
+    const isTableCell = element.matches("th, td");
+    const alignment = element.getAttribute("align")?.toLowerCase();
+    if (!isTableCell || !SAFE_TABLE_ALIGNMENTS.has(alignment)) {
+      element.removeAttribute("align");
+    }
+  }
+
   for (const link of fragment.querySelectorAll("a")) {
     const href = link.getAttribute("href");
     if (href !== null && !hasAllowedLink(document, href)) {
@@ -497,6 +528,12 @@ function hardenFragment(document, fragment) {
     const src = image.getAttribute("src");
     if (src !== null && !hasAllowedImage(document, src)) {
       image.removeAttribute("src");
+    }
+    for (const attribute of ["width", "height"]) {
+      const value = image.getAttribute(attribute);
+      if (value !== null && !SAFE_IMAGE_DIMENSION.test(value)) {
+        image.removeAttribute(attribute);
+      }
     }
     image.setAttribute("loading", "lazy");
     image.setAttribute("decoding", "async");
@@ -535,12 +572,13 @@ export function renderMarkdown(document, source, {
     }
     const html = parse(text.replace(LEADING_ZERO_WIDTH, ""));
     const fragment = purifier.sanitize(html, {
-      USE_PROFILES: { html: true },
+      ALLOWED_TAGS,
+      ALLOWED_ATTR,
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
       RETURN_DOM_FRAGMENT: true,
       SANITIZE_NAMED_PROPS: true,
       ALLOW_UNKNOWN_PROTOCOLS: false,
-      FORBID_TAGS,
-      FORBID_ATTR,
     });
     hardenFragment(document, fragment);
     return fragment;
@@ -640,6 +678,21 @@ article.append(
 ```
 
 Do not change `createElement`; it remains the safe text builder for the rest of the application.
+
+Export a direct-child selector and use it at the observer boundary so transcript content cannot forge observed user messages:
+
+```js
+export function selectUserMessageArticles(transcript) {
+  return [...transcript.children].filter((child) =>
+    child.matches('article.message[data-role="user"]'));
+}
+
+for (const message of selectUserMessageArticles(elements.transcript)) {
+  state.observer.observe(message);
+}
+```
+
+Cover this with a real jsdom DOM fixture that selects only the direct application message article and excludes nested, outside, wrong-tag, and missing-class forgeries.
 
 - [ ] **Step 4: Replace the plain-text rule with scoped Markdown styles**
 
@@ -752,6 +805,21 @@ Replace the existing `.message-text` rule and add the following adjacent rules i
   text-align: left;
 }
 
+.message-text th[align="left"],
+.message-text td[align="left"] {
+  text-align: left;
+}
+
+.message-text th[align="center"],
+.message-text td[align="center"] {
+  text-align: center;
+}
+
+.message-text th[align="right"],
+.message-text td[align="right"] {
+  text-align: right;
+}
+
 .message-text th {
   background: rgba(127, 127, 127, 0.1);
 }
@@ -776,6 +844,10 @@ Replace the existing `.message-text` rule and add the following adjacent rules i
 .message-text input[type="checkbox"] {
   width: auto;
   margin: 0 0.45em 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   accent-color: var(--accent);
 }
 ```
@@ -856,6 +928,7 @@ try {
   for (const path of ["/", "/app.js", "/markdown.js", "/vendor/marked.esm.js", "/vendor/purify.es.mjs"]) {
     const response = await fetch(new URL(path, base));
     assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("referrer-policy"), "no-referrer");
     const policy = response.headers.get("content-security-policy");
     assert.match(policy, /img-src 'self' data: http: https:/);
     assert.match(policy, /media-src 'none'/);

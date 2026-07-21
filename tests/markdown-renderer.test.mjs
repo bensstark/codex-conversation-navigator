@@ -94,7 +94,9 @@ test("renderMarkdown removes active content and unsafe attributes", () => {
 <svg><script>alert(1)</script></svg>
 <math><mi>x</mi></math>
 <custom-element>custom text</custom-element>
-<main background="https://bad.test/bg.png" role="main" aria-label="takeover" data-role="user">
+<table background="https://bad.test/bg.png"><tbody><tr><td>allowed table text</td></tr></tbody></table>
+<div role="main" data-role="user">allowed div text <span aria-label="takeover" data-test="forged">allowed span text</span></div>
+<main>
   main text <canvas>canvas text</canvas><marquee>marquee text</marquee>
 </main>`);
 
@@ -106,10 +108,21 @@ test("renderMarkdown removes active content and unsafe attributes", () => {
   );
   assert.equal(
     container.querySelector(
-      "[id], [name], [class], [style], [srcset], [background], [role], [aria-label], [data-role]",
+      "[id], [name], [class], [style], [srcset]",
     ),
     null,
   );
+  const allowedTable = container.querySelector("table");
+  assert.equal(allowedTable?.hasAttribute("background"), false);
+  assert.match(allowedTable?.textContent ?? "", /allowed table text/);
+  const allowedDiv = container.querySelector("div");
+  assert.equal(allowedDiv?.hasAttribute("role"), false);
+  assert.equal(allowedDiv?.hasAttribute("data-role"), false);
+  assert.match(allowedDiv?.textContent ?? "", /allowed div text/);
+  const allowedSpan = container.querySelector("span");
+  assert.equal(allowedSpan?.hasAttribute("aria-label"), false);
+  assert.equal(allowedSpan?.hasAttribute("data-test"), false);
+  assert.match(allowedSpan?.textContent ?? "", /allowed span text/);
   assert.match(container.textContent, /main text/);
   assert.match(container.textContent, /canvas text/);
   assert.match(container.textContent, /marquee text/);
@@ -127,12 +140,24 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
 [relative](/docs)
 [mail](mailto:user@example.com)
 [fragment](#part)
+[protocol relative](//cdn.example.com/path)
 [bad](tel:+123)
 
 ![remote](https://images.example.com/picture.png)
 ![data](data:image/png;base64,AA==)
+<img alt="valid-min-max" src="https://images.example.com/valid.png" width="1" height="10000">
+<img alt="valid-ordinary" src="https://images.example.com/valid.png" width="640" height="480">
+<img alt="zero-negative" src="https://images.example.com/invalid.png" width="0" height="-1">
+<img alt="decimal" src="https://images.example.com/invalid.png" width="1.5" height="2.0">
+<img alt="units" src="https://images.example.com/invalid.png" width="10px" height="50%">
+<img alt="leading-zero" src="https://images.example.com/invalid.png" width="01" height="0010">
+<img alt="non-number" src="https://images.example.com/invalid.png" width="wide" height="high">
+<img alt="too-large" src="https://images.example.com/invalid.png" width="10001" height="999999">
 <img alt="svg" src="data:image/svg+xml,%3Csvg%3E%3C/svg%3E">
 <img alt="ftp" src="ftp://example.com/picture.png">
+
+<table width="999999" height="999999"><tbody><tr><td width="999999" height="999999">oversized</td></tr></tbody></table>
+<hr width="999999" height="999999">
 
 - [x] done
 
@@ -140,13 +165,23 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
 <input type="text" disabled value="bad">`);
 
   const links = [...container.querySelectorAll("a")];
-  assert.equal(links.length, 5);
+  assert.equal(links.length, 6);
   for (const link of links) {
     assert.equal(link.getAttribute("target"), "_blank");
     assert.equal(link.getAttribute("rel"), "noopener noreferrer");
     assert.equal(link.getAttribute("referrerpolicy"), "no-referrer");
   }
-  assert.equal(links.at(-1).hasAttribute("href"), false);
+  assert.deepEqual(
+    links.map((link) => link.getAttribute("href")),
+    [
+      "https://example.com/path",
+      "/docs",
+      "mailto:user@example.com",
+      "#part",
+      "//cdn.example.com/path",
+      null,
+    ],
+  );
 
   const remote = container.querySelector('img[alt="remote"]');
   const data = container.querySelector('img[alt="data"]');
@@ -154,6 +189,31 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
     assert.equal(image.getAttribute("loading"), "lazy");
     assert.equal(image.getAttribute("decoding"), "async");
     assert.equal(image.getAttribute("referrerpolicy"), "no-referrer");
+  }
+  assert.equal(remote.getAttribute("src"), "https://images.example.com/picture.png");
+  assert.equal(data.getAttribute("src"), "data:image/png;base64,AA==");
+
+  assert.deepEqual(
+    ["valid-min-max", "valid-ordinary"].map((alt) => {
+      const image = container.querySelector(`img[alt="${alt}"]`);
+      return [image.getAttribute("width"), image.getAttribute("height")];
+    }),
+    [["1", "10000"], ["640", "480"]],
+  );
+  const oversizedTable = [...container.querySelectorAll("table")]
+    .find((table) => table.textContent.includes("oversized"));
+  const oversizedCell = oversizedTable.querySelector("td");
+  const oversizedRule = container.querySelector("hr");
+  for (const element of [oversizedTable, oversizedCell, oversizedRule]) {
+    assert.equal(element.hasAttribute("width"), false);
+    assert.equal(element.hasAttribute("height"), false);
+  }
+  for (const alt of [
+    "zero-negative", "decimal", "units", "leading-zero", "non-number", "too-large",
+  ]) {
+    const image = container.querySelector(`img[alt="${alt}"]`);
+    assert.equal(image.hasAttribute("width"), false, `${alt} width should be removed`);
+    assert.equal(image.hasAttribute("height"), false, `${alt} height should be removed`);
   }
   assert.equal(container.querySelector('img[alt="svg"]').hasAttribute("src"), false);
   assert.equal(container.querySelector('img[alt="ftp"]').hasAttribute("src"), false);
