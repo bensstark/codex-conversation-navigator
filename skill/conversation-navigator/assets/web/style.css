@@ -104,6 +104,14 @@ main {
   min-height: 0;
 }
 
+body.sidebar-hidden main {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.sidebar-hidden .outline-panel {
+  display: none;
+}
+
 .outline-panel {
   min-height: 0;
   display: flex;
@@ -440,6 +448,10 @@ main {
     min-height: calc(100vh - 132px);
     grid-template-columns: 1fr;
     grid-template-rows: minmax(180px, 34vh) minmax(520px, 66vh);
+  }
+
+  body.sidebar-hidden main {
+    grid-template-rows: minmax(520px, 1fr);
   }
 
   .outline-panel {

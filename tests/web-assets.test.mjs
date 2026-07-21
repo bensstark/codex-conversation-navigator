@@ -21,6 +21,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /id="message-outline"/);
   assert.match(html, /id="transcript"/);
   assert.match(html, /src="\/app\.js"/);
+  assert.doesNotMatch(html, /id="sidebar-toggle"/);
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
   assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
   assert.doesNotMatch(app, /createElement\("div", "message-text", message\.text\)/);
@@ -33,6 +34,14 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(app, /setInterval/);
   assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
   assert.match(css, /grid-template-columns/);
+  assert.match(
+    css,
+    /body\.sidebar-hidden main \{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/,
+  );
+  assert.match(
+    css,
+    /body\.sidebar-hidden \.outline-panel \{[\s\S]*?display:\s*none/,
+  );
   assert.match(css, /\.message-text h2/);
   assert.match(css, /\.message-text pre/);
   assert.match(css, /\.message-text table/);
@@ -110,4 +119,54 @@ test("frontend helpers filter messages, select genuine user articles, and naviga
     selectUserMessageArticles(transcript).map(({ id }) => id),
     ["real"],
   );
+});
+
+test("sidebar shortcut toggles only from non-editable reading targets", async () => {
+  const {
+    isSidebarToggleShortcut,
+    toggleSidebar,
+  } = await import(
+    "../skill/conversation-navigator/assets/web/app.js"
+  );
+
+  assert.equal(typeof isSidebarToggleShortcut, "function");
+  assert.equal(typeof toggleSidebar, "function");
+
+  const dom = new JSDOM(`<!doctype html><body>
+    <p id="reader">Conversation</p>
+    <input id="input">
+    <textarea id="textarea"></textarea>
+    <select id="select"><option>One</option></select>
+    <div contenteditable="true"><span id="editable-child">Draft</span></div>
+  </body>`);
+  const { document } = dom.window;
+  const reader = document.getElementById("reader");
+  const shortcut = (overrides = {}) => ({
+    key: "s",
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    repeat: false,
+    target: reader,
+    ...overrides,
+  });
+
+  assert.equal(isSidebarToggleShortcut(shortcut()), true);
+  assert.equal(isSidebarToggleShortcut(shortcut({ key: "S" })), true);
+  assert.equal(isSidebarToggleShortcut(shortcut({ key: "x" })), false);
+  assert.equal(isSidebarToggleShortcut(shortcut({ ctrlKey: true })), false);
+  assert.equal(isSidebarToggleShortcut(shortcut({ altKey: true })), false);
+  assert.equal(isSidebarToggleShortcut(shortcut({ metaKey: true })), false);
+  assert.equal(isSidebarToggleShortcut(shortcut({ repeat: true })), false);
+  for (const id of ["input", "textarea", "select", "editable-child"]) {
+    assert.equal(
+      isSidebarToggleShortcut(shortcut({ target: document.getElementById(id) })),
+      false,
+    );
+  }
+
+  toggleSidebar(document);
+  assert.equal(document.body.classList.contains("sidebar-hidden"), true);
+  toggleSidebar(document);
+  assert.equal(document.body.classList.contains("sidebar-hidden"), false);
 });

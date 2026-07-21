@@ -2,6 +2,29 @@ import { renderMarkdown } from "./markdown.js";
 
 const POLL_INTERVAL_MS = 2_000;
 const TOKEN_STORAGE_KEY = "codex-conversation-navigator-token";
+const EDITABLE_TARGET_SELECTOR = [
+  "input",
+  "textarea",
+  "select",
+  '[contenteditable]:not([contenteditable="false"])',
+].join(", ");
+
+export function isSidebarToggleShortcut(event) {
+  if (typeof event?.key !== "string"
+      || event.key.toLocaleLowerCase() !== "s"
+      || event.ctrlKey
+      || event.altKey
+      || event.metaKey
+      || event.repeat) {
+    return false;
+  }
+  return typeof event.target?.closest !== "function"
+    || !event.target.closest(EDITABLE_TARGET_SELECTOR);
+}
+
+export function toggleSidebar(documentNode) {
+  documentNode?.body?.classList.toggle("sidebar-hidden");
+}
 
 export function filterNavigation(navigation, query) {
   const normalized = query.trim().toLocaleLowerCase();
@@ -289,6 +312,11 @@ function bootstrap() {
     void refresh();
   });
   elements.search.addEventListener("input", renderOutline);
+  document.addEventListener("keydown", (event) => {
+    if (isSidebarToggleShortcut(event)) {
+      toggleSidebar(document);
+    }
+  });
 
   if (!state.token) {
     setStatus("缺少访问令牌，请从启动命令输出的完整地址重新打开。", "error");
