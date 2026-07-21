@@ -1,3 +1,5 @@
+import { renderMarkdown } from "./markdown.js";
+
 const POLL_INTERVAL_MS = 2_000;
 const TOKEN_STORAGE_KEY = "codex-conversation-navigator-token";
 
@@ -174,9 +176,11 @@ function bootstrap() {
         article.id = `message-${message.id}`;
         article.dataset.role = message.role;
         article.dataset.messageId = message.id;
+        const body = createElement("div", "message-text");
+        body.replaceChildren(renderMarkdown(document, message.text));
         article.append(
           createElement("p", "message-role", message.role === "user" ? "你" : "Codex"),
-          createElement("div", "message-text", message.text),
+          body,
         );
         fragment.append(article);
         if (message.role === "user" && !firstUserMessageId) {

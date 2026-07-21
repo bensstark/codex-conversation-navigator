@@ -19,13 +19,24 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /id="message-outline"/);
   assert.match(html, /id="transcript"/);
   assert.match(html, /src="\/app\.js"/);
+  assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
+  assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
+  assert.doesNotMatch(app, /createElement\("div", "message-text", message\.text\)/);
   assert.doesNotMatch(app, /\.innerHTML\s*=/);
+  assert.doesNotMatch(app, /\.outerHTML\s*=/);
+  assert.doesNotMatch(app, /insertAdjacentHTML|document\.write/);
   assert.doesNotMatch(app, /behavior:\s*"smooth"/);
   assert.match(app, /scrollIntoView/);
   assert.match(app, /IntersectionObserver/);
   assert.match(app, /setInterval/);
   assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
   assert.match(css, /grid-template-columns/);
+  assert.match(css, /\.message-text h2/);
+  assert.match(css, /\.message-text pre/);
+  assert.match(css, /\.message-text table/);
+  assert.match(css, /\.message-text img/);
+  assert.match(css, /\.message-text blockquote/);
+  assert.match(css, /\.message-text input\[type="checkbox"\]/);
 });
 
 test("frontend helpers filter messages and detect bottom proximity", async () => {
