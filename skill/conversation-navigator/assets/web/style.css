@@ -112,7 +112,8 @@ body.sidebar-hidden .outline-panel {
   display: none;
 }
 
-body.topbar-hidden .topbar {
+body.topbar-hidden .topbar,
+body.topbar-hidden .status {
   display: none;
 }
 

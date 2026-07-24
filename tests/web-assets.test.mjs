@@ -44,7 +44,7 @@ test("web assets expose the navigation interface safely", async () => {
   );
   assert.match(
     css,
-    /body\.topbar-hidden \.topbar \{[\s\S]*?display:\s*none/,
+    /body\.topbar-hidden \.topbar,\s*body\.topbar-hidden \.status \{[\s\S]*?display:\s*none/,
   );
   assert.match(
     css,
