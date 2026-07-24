@@ -1,0 +1,83 @@
+# Codex Conversation Navigator
+
+## 中文
+
+一个本地、只读的 Codex 对话伴生页面。它会按用户消息生成侧边导航，帮助你快速搜索并直接跳转到长对话中的指定位置。
+
+主要功能：
+
+- 只显示用户消息和 Codex 的最终回答，不显示思考过程
+- 支持 Markdown 和代码语法高亮
+- 点击用户消息后立即跳转
+- 按 `S` 隐藏或显示侧栏，按 `Q` 隐藏或显示顶栏
+- 仅在本机 `127.0.0.1` 运行，不会修改 Codex 对话
+
+### 要求
+
+- Node.js 20.19 或更高版本
+- `codex` 命令已安装并可在终端中使用
+
+### 直接运行
+
+```bash
+git clone https://github.com/bensstark/codex-conversation-navigator.git
+cd codex-conversation-navigator
+node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
+```
+
+浏览器通常会自动打开。页面只会显示工作目录与 `--cwd` 完全一致的 VS Code Codex 对话。
+
+### 安装为 Codex Skill
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)/skill/conversation-navigator" ~/.codex/skills/conversation-navigator
+```
+
+然后在 Codex 中输入：
+
+```text
+使用 $conversation-navigator 打开当前项目的对话导航
+```
+
+---
+
+## English
+
+A local, read-only companion page for Codex conversations. It builds a sidebar from user messages so you can search and jump directly to any point in a long conversation.
+
+Key features:
+
+- Shows user messages and final Codex answers without reasoning traces
+- Renders Markdown with syntax-highlighted code
+- Jumps instantly when a user message is selected
+- Press `S` to toggle the sidebar and `Q` to toggle the top bar
+- Runs only on local `127.0.0.1` and never modifies Codex conversations
+
+### Requirements
+
+- Node.js 20.19 or later
+- The `codex` command installed and available in your terminal
+
+### Run directly
+
+```bash
+git clone https://github.com/bensstark/codex-conversation-navigator.git
+cd codex-conversation-navigator
+node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
+```
+
+The browser normally opens automatically. The page only shows VS Code Codex conversations whose working directory exactly matches `--cwd`.
+
+### Install as a Codex Skill
+
+```bash
+mkdir -p ~/.codex/skills
+ln -s "$(pwd)/skill/conversation-navigator" ~/.codex/skills/conversation-navigator
+```
+
+Then ask Codex:
+
+```text
+Use $conversation-navigator to open the conversation navigator for this project.
+```
