@@ -21,6 +21,10 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /id="message-outline"/);
   assert.match(html, /id="transcript"/);
   assert.match(html, /src="\/app\.js"/);
+  assert.match(
+    html,
+    /class="shortcut-help"[\s\S]*?<kbd>Q<\/kbd> 隐藏顶栏[\s\S]*?<kbd>S<\/kbd> 隐藏侧栏/,
+  );
   assert.doesNotMatch(html, /id="sidebar-toggle"/);
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
   assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
@@ -34,6 +38,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(app, /setInterval/);
   assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
   assert.match(css, /grid-template-columns/);
+  assert.match(css, /\.shortcut-help \{/);
+  assert.match(css, /\.shortcut-help kbd \{/);
   assert.match(
     css,
     /body\.sidebar-hidden main \{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/,

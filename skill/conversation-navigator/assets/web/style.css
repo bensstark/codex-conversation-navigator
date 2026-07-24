@@ -61,6 +61,26 @@ h1 {
   font: 650 1.45rem/1.1 Georgia, "Times New Roman", serif;
 }
 
+.shortcut-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.shortcut-help kbd {
+  display: inline-block;
+  min-width: 1.55rem;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent);
+  background: var(--panel-strong);
+  font: 700 0.72rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  box-shadow: 0 1px 0 var(--line);
+}
+
 .thread-picker {
   min-width: min(440px, 52vw);
   display: grid;
