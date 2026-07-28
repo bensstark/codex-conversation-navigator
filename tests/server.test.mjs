@@ -158,6 +158,26 @@ test("serves static assets and protects thread APIs", async (t) => {
   assert.equal(missing.status, 404);
 });
 
+test("allows explicit tokenless access", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const navigator = await createNavigatorServer({
+    client: createFakeClient(),
+    cwd: "/repo",
+    webRoot,
+    auth: false,
+    idleMs: 0,
+    openUrl: false,
+  });
+  t.after(() => navigator.close());
+
+  assert.equal(new URL(navigator.url).hash, "");
+  assert.equal(navigator.token, null);
+
+  const response = await fetch(apiUrl(navigator.url, "/api/threads"));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).threads[0].id, "thread-1");
+});
+
 test("returns App Server errors without exposing a stack", async (t) => {
   const webRoot = await createWebRoot(t);
   const navigator = await createNavigatorServer({
@@ -217,4 +237,9 @@ test("parses CLI arguments", () => {
   });
   assert.throws(() => parseCliArgs(["--cwd"]), /requires a path/);
   assert.throws(() => parseCliArgs(["--unknown"]), /Unknown argument/);
+  assert.deepEqual(parseCliArgs(["--cwd", "/repo", "--no-auth"]), {
+    cwd: "/repo",
+    openUrl: true,
+    auth: false,
+  });
 });

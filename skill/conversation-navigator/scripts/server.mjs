@@ -41,7 +41,8 @@ function sendJson(response, status, value) {
 }
 
 function authorized(request, token) {
-  return request.headers.authorization === `Bearer ${token}`;
+  return token === null
+    || request.headers.authorization === `Bearer ${token}`;
 }
 
 function openInBrowser(url) {
@@ -84,6 +85,8 @@ export function parseCliArgs(args) {
     const argument = args[index];
     if (argument === "--no-open") {
       options.openUrl = false;
+    } else if (argument === "--no-auth") {
+      options.auth = false;
     } else if (argument === "--cwd") {
       const cwd = args[index + 1];
       if (!cwd || cwd.startsWith("--")) {
@@ -104,12 +107,14 @@ export async function createNavigatorServer({
   cwd,
   webRoot = fileURLToPath(new URL("../assets/web/", import.meta.url)),
   token = randomBytes(24).toString("hex"),
+  auth = true,
   idleMs = 30 * 60_000,
   openUrl = true,
 }) {
   let closed = false;
   let lastActivity = Date.now();
   let idleTimer = null;
+  const accessToken = auth ? token : null;
 
   const server = createServer(async (request, response) => {
     lastActivity = Date.now();
@@ -117,7 +122,7 @@ export async function createNavigatorServer({
 
     try {
       if (requestUrl.pathname.startsWith("/api/")) {
-        if (!authorized(request, token)) {
+        if (!authorized(request, accessToken)) {
           sendJson(response, 401, { error: "Unauthorized" });
           return;
         }
@@ -204,12 +209,15 @@ export async function createNavigatorServer({
   }
 
   const address = server.address();
-  const url = `http://127.0.0.1:${address.port}/#token=${token}`;
+  const baseUrl = `http://127.0.0.1:${address.port}/`;
+  const url = accessToken === null
+    ? baseUrl
+    : `${baseUrl}#token=${accessToken}`;
   if (openUrl) {
     openInBrowser(url);
   }
 
-  return { url, token, close };
+  return { url, token: accessToken, close };
 }
 
 async function runCli() {

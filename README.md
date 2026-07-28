@@ -27,6 +27,14 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 
 浏览器通常会自动打开。页面只会显示工作目录与 `--cwd` 完全一致的 VS Code Codex 对话。
 
+如果明确不需要本地访问令牌，可添加 `--no-auth`：
+
+```bash
+node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project --no-auth
+```
+
+此模式仍只监听 `127.0.0.1`，但服务运行期间，本机其他进程也能读取对话 API。默认令牌模式更安全。
+
 ### 安装为 Codex Skill
 
 ```bash
@@ -68,6 +76,14 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 ```
 
 The browser normally opens automatically. The page only shows VS Code Codex conversations whose working directory exactly matches `--cwd`.
+
+To run without a local access token, add `--no-auth`:
+
+```bash
+node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project --no-auth
+```
+
+This mode still listens only on `127.0.0.1`, but other processes on the same machine can read the conversation API while the server is running. The default token mode is safer.
 
 ### Install as a Codex Skill
 
