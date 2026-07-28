@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -38,11 +37,6 @@ function sendJson(response, status, value) {
     "cache-control": "no-store",
   });
   response.end(JSON.stringify(value));
-}
-
-function authorized(request, token) {
-  return token === null
-    || request.headers.authorization === `Bearer ${token}`;
 }
 
 function openInBrowser(url) {
@@ -85,8 +79,6 @@ export function parseCliArgs(args) {
     const argument = args[index];
     if (argument === "--no-open") {
       options.openUrl = false;
-    } else if (argument === "--no-auth") {
-      options.auth = false;
     } else if (argument === "--cwd") {
       const cwd = args[index + 1];
       if (!cwd || cwd.startsWith("--")) {
@@ -106,15 +98,12 @@ export async function createNavigatorServer({
   client,
   cwd,
   webRoot = fileURLToPath(new URL("../assets/web/", import.meta.url)),
-  token = randomBytes(24).toString("hex"),
-  auth = true,
   idleMs = 30 * 60_000,
   openUrl = true,
 }) {
   let closed = false;
   let lastActivity = Date.now();
   let idleTimer = null;
-  const accessToken = auth ? token : null;
 
   const server = createServer(async (request, response) => {
     lastActivity = Date.now();
@@ -122,11 +111,6 @@ export async function createNavigatorServer({
 
     try {
       if (requestUrl.pathname.startsWith("/api/")) {
-        if (!authorized(request, accessToken)) {
-          sendJson(response, 401, { error: "Unauthorized" });
-          return;
-        }
-
         if (requestUrl.pathname === "/api/threads") {
           const threads = await client.listThreads(cwd);
           sendJson(response, 200, {
@@ -209,15 +193,12 @@ export async function createNavigatorServer({
   }
 
   const address = server.address();
-  const baseUrl = `http://127.0.0.1:${address.port}/`;
-  const url = accessToken === null
-    ? baseUrl
-    : `${baseUrl}#token=${accessToken}`;
+  const url = `http://127.0.0.1:${address.port}/`;
   if (openUrl) {
     openInBrowser(url);
   }
 
-  return { url, token: accessToken, close };
+  return { url, close };
 }
 
 async function runCli() {

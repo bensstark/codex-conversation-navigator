@@ -1,7 +1,6 @@
 import { renderMarkdown } from "./markdown.js";
 
 const POLL_INTERVAL_MS = 2_000;
-const TOKEN_STORAGE_KEY = "codex-conversation-navigator-token";
 const EDITABLE_TARGET_SELECTOR = [
   "input",
   "textarea",
@@ -71,17 +70,6 @@ function createElement(tagName, className, text) {
   return node;
 }
 
-function readToken() {
-  const params = new URLSearchParams(window.location.hash.slice(1));
-  const token = params.get("token");
-  if (token) {
-    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
-    history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-    return token;
-  }
-  return sessionStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
 function threadLabel(thread) {
   return thread.name || thread.preview || `对话 ${thread.id.slice(0, 8)}`;
 }
@@ -107,7 +95,6 @@ function bootstrap() {
     status: document.getElementById("status"),
   };
   const state = {
-    token: readToken(),
     threadId: null,
     threadsSignature: "",
     threadSignature: "",
@@ -125,7 +112,6 @@ function bootstrap() {
 
   async function api(path) {
     const response = await fetch(path, {
-      headers: { authorization: `Bearer ${state.token}` },
       cache: "no-store",
     });
     const payload = await response.json();
@@ -275,7 +261,7 @@ function bootstrap() {
   }
 
   async function refresh() {
-    if (state.loading || !state.token) {
+    if (state.loading) {
       return;
     }
     state.loading = true;
@@ -331,13 +317,6 @@ function bootstrap() {
       toggleTopbar(document);
     }
   });
-
-  if (!state.token) {
-    setStatus("缺少访问令牌，请从启动命令输出的完整地址重新打开。", "error");
-    elements.threadSelect.disabled = true;
-    elements.search.disabled = true;
-    return;
-  }
 
   void refresh();
   window.setInterval(refresh, POLL_INTERVAL_MS);

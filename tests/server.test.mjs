@@ -69,22 +69,19 @@ function apiUrl(base, path) {
   return new URL(path, base).toString();
 }
 
-function authHeaders() {
-  return { authorization: "Bearer test-token" };
-}
-
-test("serves static assets and protects thread APIs", async (t) => {
+test("serves static assets and thread APIs without authentication", async (t) => {
   const webRoot = await createWebRoot(t);
   const client = createFakeClient();
   const navigator = await createNavigatorServer({
     client,
     cwd: "/repo",
     webRoot,
-    token: "test-token",
     idleMs: 0,
     openUrl: false,
   });
   t.after(() => navigator.close());
+
+  assert.equal(new URL(navigator.url).hash, "");
 
   const index = await fetch(apiUrl(navigator.url, "/"));
   assert.equal(index.status, 200);
@@ -129,14 +126,9 @@ test("serves static assets and protects thread APIs", async (t) => {
   );
   assert.equal(unlistedVendorFile.status, 404);
 
-  const unauthorized = await fetch(apiUrl(navigator.url, "/api/threads"));
-  assert.equal(unauthorized.status, 401);
-
-  const authorized = await fetch(apiUrl(navigator.url, "/api/threads"), {
-    headers: authHeaders(),
-  });
-  assert.equal(authorized.status, 200);
-  assert.deepEqual(await authorized.json(), {
+  const threads = await fetch(apiUrl(navigator.url, "/api/threads"));
+  assert.equal(threads.status, 200);
+  assert.deepEqual(await threads.json(), {
     threads: [
       {
         id: "thread-1",
@@ -147,35 +139,12 @@ test("serves static assets and protects thread APIs", async (t) => {
     ],
   });
 
-  const thread = await fetch(
-    apiUrl(navigator.url, "/api/threads/thread-1"),
-    { headers: authHeaders() },
-  );
+  const thread = await fetch(apiUrl(navigator.url, "/api/threads/thread-1"));
   assert.equal(thread.status, 200);
   assert.equal((await thread.json()).thread.navigation[0].text, "Explain run()");
 
   const missing = await fetch(apiUrl(navigator.url, "/missing"));
   assert.equal(missing.status, 404);
-});
-
-test("allows explicit tokenless access", async (t) => {
-  const webRoot = await createWebRoot(t);
-  const navigator = await createNavigatorServer({
-    client: createFakeClient(),
-    cwd: "/repo",
-    webRoot,
-    auth: false,
-    idleMs: 0,
-    openUrl: false,
-  });
-  t.after(() => navigator.close());
-
-  assert.equal(new URL(navigator.url).hash, "");
-  assert.equal(navigator.token, null);
-
-  const response = await fetch(apiUrl(navigator.url, "/api/threads"));
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).threads[0].id, "thread-1");
 });
 
 test("returns App Server errors without exposing a stack", async (t) => {
@@ -184,16 +153,12 @@ test("returns App Server errors without exposing a stack", async (t) => {
     client: createFakeClient({ readError: new Error("read failed") }),
     cwd: "/repo",
     webRoot,
-    token: "test-token",
     idleMs: 0,
     openUrl: false,
   });
   t.after(() => navigator.close());
 
-  const response = await fetch(
-    apiUrl(navigator.url, "/api/threads/thread-1"),
-    { headers: authHeaders() },
-  );
+  const response = await fetch(apiUrl(navigator.url, "/api/threads/thread-1"));
   assert.equal(response.status, 500);
   assert.deepEqual(await response.json(), { error: "read failed" });
 });
@@ -237,9 +202,5 @@ test("parses CLI arguments", () => {
   });
   assert.throws(() => parseCliArgs(["--cwd"]), /requires a path/);
   assert.throws(() => parseCliArgs(["--unknown"]), /Unknown argument/);
-  assert.deepEqual(parseCliArgs(["--cwd", "/repo", "--no-auth"]), {
-    cwd: "/repo",
-    openUrl: true,
-    auth: false,
-  });
+  assert.throws(() => parseCliArgs(["--no-auth"]), /Unknown argument/);
 });

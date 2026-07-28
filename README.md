@@ -10,7 +10,7 @@
 - 支持 Markdown 和代码语法高亮
 - 点击用户消息后立即跳转
 - 按 `S` 隐藏或显示侧栏，按 `Q` 隐藏或显示顶栏
-- 仅在本机 `127.0.0.1` 运行，不会修改 Codex 对话
+- 仅在本机 `127.0.0.1` 运行，不设访问控制，也不会修改 Codex 对话
 
 ### 要求
 
@@ -27,13 +27,7 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 
 浏览器通常会自动打开。页面只会显示工作目录与 `--cwd` 完全一致的 VS Code Codex 对话。
 
-如果明确不需要本地访问令牌，可添加 `--no-auth`：
-
-```bash
-node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project --no-auth
-```
-
-此模式仍只监听 `127.0.0.1`，但服务运行期间，本机其他进程也能读取对话 API。默认令牌模式更安全。
+服务运行期间，本机其他进程也能读取对话 API。
 
 ### 安装为 Codex Skill
 
@@ -60,7 +54,7 @@ Key features:
 - Renders Markdown with syntax-highlighted code
 - Jumps instantly when a user message is selected
 - Press `S` to toggle the sidebar and `Q` to toggle the top bar
-- Runs only on local `127.0.0.1` and never modifies Codex conversations
+- Runs only on local `127.0.0.1`, has no access control, and never modifies Codex conversations
 
 ### Requirements
 
@@ -77,13 +71,7 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 
 The browser normally opens automatically. The page only shows VS Code Codex conversations whose working directory exactly matches `--cwd`.
 
-To run without a local access token, add `--no-auth`:
-
-```bash
-node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project --no-auth
-```
-
-This mode still listens only on `127.0.0.1`, but other processes on the same machine can read the conversation API while the server is running. The default token mode is safer.
+Other processes on the same machine can read the conversation API while the server is running.
 
 ### Install as a Codex Skill
 

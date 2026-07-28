@@ -32,6 +32,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.doesNotMatch(app, /\.innerHTML\s*=/);
   assert.doesNotMatch(app, /\.outerHTML\s*=/);
   assert.doesNotMatch(app, /insertAdjacentHTML|document\.write/);
+  assert.doesNotMatch(app, /TOKEN_STORAGE_KEY|readToken|authorization|Bearer/);
   assert.doesNotMatch(app, /behavior:\s*"smooth"/);
   assert.match(app, /scrollIntoView/);
   assert.match(app, /IntersectionObserver/);

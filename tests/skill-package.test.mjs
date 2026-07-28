@@ -12,7 +12,7 @@ test("skill package documents the launch workflow without placeholders", async (
   assert.match(skill, /description: Use when /);
   assert.match(skill, /scripts\/server\.mjs/);
   assert.match(skill, /--cwd/);
-  assert.match(skill, /--no-auth/);
+  assert.doesNotMatch(skill, /--no-auth/);
   assert.match(skill, /read-only/i);
   assert.doesNotMatch(skill, /TODO/);
 });
