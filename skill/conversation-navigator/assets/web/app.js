@@ -59,6 +59,39 @@ export function selectUserMessageArticles(transcript) {
     child.matches('article.message[data-role="user"]'));
 }
 
+export function addCodeCopyButtons(
+  documentNode,
+  container,
+  writeText = (text) => globalThis.navigator.clipboard.writeText(text),
+) {
+  for (const code of container.querySelectorAll("pre > code")) {
+    const pre = code.parentElement;
+    const wrapper = documentNode.createElement("div");
+    const button = documentNode.createElement("button");
+    wrapper.className = "code-block";
+    button.type = "button";
+    button.className = "code-copy-button";
+    button.textContent = "复制";
+    button.setAttribute("aria-label", "复制代码");
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await writeText(code.textContent ?? "");
+        button.textContent = "已复制";
+      } catch {
+        button.textContent = "复制失败";
+      } finally {
+        button.disabled = false;
+      }
+    });
+    button.addEventListener("blur", () => {
+      button.textContent = "复制";
+    });
+    pre.before(wrapper);
+    wrapper.append(pre, button);
+  }
+}
+
 function createElement(tagName, className, text) {
   const node = document.createElement(tagName);
   if (className) {
@@ -204,6 +237,7 @@ function bootstrap() {
         article.dataset.messageId = message.id;
         const body = createElement("div", "message-text");
         body.replaceChildren(renderMarkdown(document, message.text));
+        addCodeCopyButtons(document, body);
         article.append(
           createElement("p", "message-role", message.role === "user" ? "你" : "Codex"),
           body,

@@ -28,6 +28,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.doesNotMatch(html, /id="sidebar-toggle"/);
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
   assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
+  assert.match(app, /addCodeCopyButtons\(document, body\)/);
   assert.doesNotMatch(app, /createElement\("div", "message-text", message\.text\)/);
   assert.doesNotMatch(app, /\.innerHTML\s*=/);
   assert.doesNotMatch(app, /\.outerHTML\s*=/);
@@ -59,6 +60,7 @@ test("web assets expose the navigation interface safely", async () => {
   );
   assert.match(css, /\.message-text h2/);
   assert.match(css, /\.message-text pre/);
+  assert.match(css, /\.code-copy-button/);
   assert.match(css, /\.message-text \.hljs-keyword/);
   assert.match(css, /\.message-text table/);
   assert.match(css, /\.message-text img/);
@@ -84,6 +86,39 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(checkboxRule, /border:\s*0/);
   assert.match(checkboxRule, /background:\s*transparent/);
   assert.match(checkboxRule, /box-shadow:\s*none/);
+});
+
+test("code copy buttons copy only block code text", async () => {
+  const { addCodeCopyButtons } = await import(
+    "../skill/conversation-navigator/assets/web/app.js"
+  );
+  const dom = new JSDOM(`<!doctype html><body>
+    <div id="message">
+      <p>Use <code>inline()</code>.</p>
+      <pre><code>const answer = 42;\n</code></pre>
+    </div>
+  </body>`);
+  const { document } = dom.window;
+  const message = document.getElementById("message");
+  const copied = [];
+
+  addCodeCopyButtons(document, message, async (text) => copied.push(text));
+
+  const button = message.querySelector(".code-copy-button");
+  assert.ok(button);
+  assert.equal(button.type, "button");
+  assert.equal(button.textContent, "复制");
+  assert.equal(button.getAttribute("aria-label"), "复制代码");
+  assert.equal(message.querySelectorAll(".code-copy-button").length, 1);
+
+  button.click();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(copied, ["const answer = 42;\n"]);
+  assert.equal(button.textContent, "已复制");
+  assert.equal(message.querySelector("pre > code").textContent, "const answer = 42;\n");
+
+  button.dispatchEvent(new dom.window.Event("blur"));
+  assert.equal(button.textContent, "复制");
 });
 
 test("frontend helpers filter messages, select genuine user articles, and navigate", async () => {

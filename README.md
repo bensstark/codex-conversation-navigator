@@ -8,6 +8,7 @@
 
 - 只显示用户消息和 Codex 的最终回答，不显示思考过程
 - 支持 Markdown 和代码语法高亮
+- 代码块提供一键复制按钮
 - 点击用户消息后立即跳转
 - 按 `S` 隐藏或显示侧栏，按 `Q` 隐藏或显示顶栏
 - 仅在本机 `127.0.0.1` 运行，不设访问控制，也不会修改 Codex 对话
@@ -52,6 +53,7 @@ Key features:
 
 - Shows user messages and final Codex answers without reasoning traces
 - Renders Markdown with syntax-highlighted code
+- Provides one-click copy buttons for code blocks
 - Jumps instantly when a user message is selected
 - Press `S` to toggle the sidebar and `Q` to toggle the top bar
 - Runs only on local `127.0.0.1`, has no access control, and never modifies Codex conversations
