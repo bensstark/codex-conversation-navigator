@@ -17,6 +17,8 @@ test("web assets expose the navigation interface safely", async () => {
   ]);
 
   assert.match(html, /id="thread-select"/);
+  assert.match(html, /<title>Codex Companion<\/title>/);
+  assert.match(html, /<h1>Codex Companion<\/h1>/);
   assert.match(html, /id="message-search"/);
   assert.match(html, /id="message-outline"/);
   assert.match(html, /id="transcript"/);
@@ -96,6 +98,7 @@ test("code copy buttons copy only block code text", async () => {
     <div id="message">
       <p>Use <code>inline()</code>.</p>
       <pre><code>const answer = 42;\n</code></pre>
+      <pre><code>console.log(answer);\n</code></pre>
     </div>
   </body>`);
   const { document } = dom.window;
@@ -104,21 +107,28 @@ test("code copy buttons copy only block code text", async () => {
 
   addCodeCopyButtons(document, message, async (text) => copied.push(text));
 
-  const button = message.querySelector(".code-copy-button");
-  assert.ok(button);
-  assert.equal(button.type, "button");
-  assert.equal(button.textContent, "复制");
-  assert.equal(button.getAttribute("aria-label"), "复制代码");
-  assert.equal(message.querySelectorAll(".code-copy-button").length, 1);
+  const [firstButton, secondButton] = message.querySelectorAll(".code-copy-button");
+  assert.ok(firstButton);
+  assert.ok(secondButton);
+  assert.equal(firstButton.type, "button");
+  assert.equal(firstButton.textContent, "");
+  assert.ok(firstButton.querySelector("svg"));
+  assert.equal(firstButton.getAttribute("aria-label"), "Copy code");
+  assert.equal(firstButton.title, "Copy code");
+  assert.equal(message.querySelectorAll(".code-copy-button").length, 2);
 
-  button.click();
+  firstButton.click();
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(copied, ["const answer = 42;\n"]);
-  assert.equal(button.textContent, "已复制");
+  assert.equal(firstButton.textContent, "Copied");
   assert.equal(message.querySelector("pre > code").textContent, "const answer = 42;\n");
 
-  button.dispatchEvent(new dom.window.Event("blur"));
-  assert.equal(button.textContent, "复制");
+  secondButton.click();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(copied, ["const answer = 42;\n", "console.log(answer);\n"]);
+  assert.equal(firstButton.textContent, "");
+  assert.ok(firstButton.querySelector("svg"));
+  assert.equal(secondButton.textContent, "Copied");
 });
 
 test("frontend helpers filter messages, select genuine user articles, and navigate", async () => {

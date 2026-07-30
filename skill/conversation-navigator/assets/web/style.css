@@ -49,13 +49,6 @@ select {
   backdrop-filter: blur(18px);
 }
 
-.eyebrow {
-  margin: 0 0 3px;
-  color: var(--accent);
-  font: 700 0.67rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.16em;
-}
-
 h1 {
   margin: 0;
   font: 650 1.45rem/1.1 Georgia, "Times New Roman", serif;
@@ -345,13 +338,26 @@ body.topbar-hidden main {
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 5px 9px;
+  min-width: 30px;
+  height: 30px;
+  padding: 5px 8px;
   border: 1px solid rgba(244, 240, 231, 0.24);
   border-radius: 6px;
   color: #f4f0e7;
   background: rgba(20, 20, 17, 0.82);
   font: 0.72rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
+}
+
+.message-text .code-copy-button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .message-text .code-copy-button:hover {

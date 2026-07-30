@@ -1,6 +1,8 @@
 import { renderMarkdown } from "./markdown.js";
 
 const POLL_INTERVAL_MS = 2_000;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+let activeCopyButton = null;
 const EDITABLE_TARGET_SELECTOR = [
   "input",
   "textarea",
@@ -59,6 +61,26 @@ export function selectUserMessageArticles(transcript) {
     child.matches('article.message[data-role="user"]'));
 }
 
+function showCopyIcon(button) {
+  const documentNode = button.ownerDocument;
+  const icon = documentNode.createElementNS(SVG_NAMESPACE, "svg");
+  const rect = documentNode.createElementNS(SVG_NAMESPACE, "rect");
+  const path = documentNode.createElementNS(SVG_NAMESPACE, "path");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  rect.setAttribute("x", "8");
+  rect.setAttribute("y", "8");
+  rect.setAttribute("width", "14");
+  rect.setAttribute("height", "14");
+  rect.setAttribute("rx", "2");
+  path.setAttribute("d", "M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2");
+  icon.append(rect, path);
+  button.replaceChildren(icon);
+  button.setAttribute("aria-label", "Copy code");
+  button.title = "Copy code";
+}
+
 export function addCodeCopyButtons(
   documentNode,
   container,
@@ -71,21 +93,29 @@ export function addCodeCopyButtons(
     wrapper.className = "code-block";
     button.type = "button";
     button.className = "code-copy-button";
-    button.textContent = "复制";
-    button.setAttribute("aria-label", "复制代码");
+    showCopyIcon(button);
     button.addEventListener("click", async () => {
+      if (activeCopyButton && activeCopyButton !== button) {
+        showCopyIcon(activeCopyButton);
+      }
+      activeCopyButton = button;
       button.disabled = true;
       try {
         await writeText(code.textContent ?? "");
-        button.textContent = "已复制";
+        if (activeCopyButton === button) {
+          button.textContent = "Copied";
+          button.setAttribute("aria-label", "Code copied");
+          button.removeAttribute("title");
+        }
       } catch {
-        button.textContent = "复制失败";
+        if (activeCopyButton === button) {
+          button.textContent = "Failed";
+          button.setAttribute("aria-label", "Copy failed");
+          button.removeAttribute("title");
+        }
       } finally {
         button.disabled = false;
       }
-    });
-    button.addEventListener("blur", () => {
-      button.textContent = "复制";
     });
     pre.before(wrapper);
     wrapper.append(pre, button);
