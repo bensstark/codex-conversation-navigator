@@ -134,7 +134,15 @@ function createElement(tagName, className, text) {
 }
 
 function threadLabel(thread) {
-  return thread.name || thread.preview || `对话 ${thread.id.slice(0, 8)}`;
+  return thread.name || thread.preview || `Thread ${thread.id.slice(0, 8)}`;
+}
+
+export function sourceLabel(source) {
+  return source === "cli" ? "Codex CLI" : "VS Code";
+}
+
+export function sourceLabelForFilter(source) {
+  return source === "all" ? "VS Code or Codex CLI" : sourceLabel(source);
 }
 
 function formatTime(value) {
@@ -151,6 +159,7 @@ function formatTime(value) {
 
 function bootstrap() {
   const elements = {
+    sourceSelect: document.getElementById("source-select"),
     threadSelect: document.getElementById("thread-select"),
     search: document.getElementById("message-search"),
     outline: document.getElementById("message-outline"),
@@ -158,6 +167,9 @@ function bootstrap() {
     status: document.getElementById("status"),
   };
   const state = {
+    source: elements.sourceSelect.value,
+    cwd: "",
+    threadSource: "",
     threadId: null,
     threadsSignature: "",
     threadSignature: "",
@@ -169,7 +181,9 @@ function bootstrap() {
   };
 
   function setStatus(message, kind = "normal") {
-    elements.status.textContent = message;
+    elements.status.textContent = state.cwd
+      ? `${message} · CWD: ${state.cwd}`
+      : message;
     elements.status.dataset.kind = kind;
   }
 
@@ -179,7 +193,7 @@ function bootstrap() {
     });
     const payload = await response.json();
     if (!response.ok) {
-      throw new Error(payload.error || `请求失败 (${response.status})`);
+      throw new Error(payload.error || `Request failed (${response.status})`);
     }
     return payload;
   }
@@ -206,8 +220,8 @@ function bootstrap() {
 
     if (entries.length === 0) {
       fragment.append(createElement("p", "empty-note", state.navigation.length
-        ? "没有匹配的用户消息"
-        : "这段对话还没有用户消息"));
+        ? "No matching user messages"
+        : "This thread has no user messages"));
     }
 
     entries.forEach((entry, index) => {
@@ -269,7 +283,7 @@ function bootstrap() {
         body.replaceChildren(renderMarkdown(document, message.text));
         addCodeCopyButtons(document, body);
         article.append(
-          createElement("p", "message-role", message.role === "user" ? "你" : "Codex"),
+          createElement("p", "message-role", message.role === "user" ? "You" : "Codex"),
           body,
         );
         fragment.append(article);
@@ -280,7 +294,7 @@ function bootstrap() {
     }
 
     if (!fragment.childNodes.length) {
-      fragment.append(createElement("p", "empty-note transcript-empty", "这段对话还没有可显示的消息"));
+      fragment.append(createElement("p", "empty-note transcript-empty", "This thread has no messages to display"));
     }
 
     elements.transcript.replaceChildren(fragment);
@@ -302,10 +316,6 @@ function bootstrap() {
     for (const thread of threads) {
       const option = createElement("option", "", threadLabel(thread));
       option.value = thread.id;
-      const time = formatTime(thread.updatedAt);
-      if (time) {
-        option.textContent = `${option.textContent} · ${time}`;
-      }
       fragment.append(option);
     }
     elements.threadSelect.replaceChildren(fragment);
@@ -319,7 +329,7 @@ function bootstrap() {
     state.hasRenderedThread = false;
     state.observer?.disconnect();
     elements.transcript.replaceChildren(
-      createElement("p", "empty-note transcript-empty", "当前项目还没有 VS Code Codex 对话"),
+      createElement("p", "empty-note transcript-empty", `No ${sourceLabelForFilter(state.source)} conversations found for this project`),
     );
     renderOutline();
   }
@@ -330,13 +340,15 @@ function bootstrap() {
     }
     state.loading = true;
     try {
-      const { threads } = await api("/api/threads");
+      const { cwd, threads } = await api(`/api/threads?source=${encodeURIComponent(state.source)}`);
+      state.cwd = cwd;
       const threadsSignature = JSON.stringify(threads);
       const stillExists = threads.some((thread) => thread.id === state.threadId);
       if (!stillExists) {
         state.threadId = threads[0]?.id ?? null;
         state.threadSignature = "";
       }
+      state.threadSource = threads.find((thread) => thread.id === state.threadId)?.source ?? "";
       if (threadsSignature !== state.threadsSignature) {
         state.threadsSignature = threadsSignature;
         renderThreadOptions(threads);
@@ -344,7 +356,7 @@ function bootstrap() {
 
       if (!state.threadId) {
         renderNoThreads();
-        setStatus("没有找到当前项目的 VS Code Codex 对话");
+        setStatus(`No ${sourceLabelForFilter(state.source)} conversations found for this project`);
         return;
       }
 
@@ -354,18 +366,31 @@ function bootstrap() {
         state.threadSignature = threadSignature;
         renderTranscript(thread);
       }
-      setStatus(`已同步 · ${formatTime(thread.updatedAt) || "刚刚"}`);
+      setStatus(
+        `Synced · ${formatTime(thread.updatedAt) || "just now"}`
+        + (state.threadSource ? ` · Source: ${sourceLabel(state.threadSource)}` : ""),
+      );
     } catch (error) {
       if (!state.hasRenderedThread) {
         elements.transcript.replaceChildren(
-          createElement("p", "empty-note transcript-empty", "暂时无法读取对话"),
+          createElement("p", "empty-note transcript-empty", "Unable to read conversations"),
         );
       }
-      setStatus(`同步失败：${error.message}`, "error");
+      setStatus(`Sync failed: ${error.message}`, "error");
     } finally {
       state.loading = false;
     }
   }
+
+  elements.sourceSelect.addEventListener("change", () => {
+    state.source = elements.sourceSelect.value;
+    state.threadId = null;
+    state.threadsSignature = "";
+    state.threadSignature = "";
+    state.threadSource = "";
+    state.activeMessageId = null;
+    void refresh();
+  });
 
   elements.threadSelect.addEventListener("change", () => {
     state.threadId = elements.threadSelect.value;
