@@ -17,6 +17,10 @@ test("web assets expose the navigation interface safely", async () => {
   ]);
 
   assert.match(html, /id="thread-select"/);
+  assert.match(html, /id="source-select"/);
+  assert.match(html, /<option value="all">All<\/option>/);
+  assert.match(html, /<option value="vscode">VS Code<\/option>/);
+  assert.match(html, /<option value="cli">Codex CLI<\/option>/);
   assert.match(html, /<title>Codex Companion<\/title>/);
   assert.match(html, /<h1>Codex Companion<\/h1>/);
   assert.match(html, /id="message-search"/);
@@ -25,7 +29,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /src="\/app\.js"/);
   assert.match(
     html,
-    /class="shortcut-help"[\s\S]*?<kbd>Q<\/kbd> 隐藏顶栏[\s\S]*?<kbd>S<\/kbd> 隐藏侧栏/,
+    /class="shortcut-help"[\s\S]*?<kbd>Q<\/kbd> Hide top bar[\s\S]*?<kbd>S<\/kbd> Hide sidebar/,
   );
   assert.doesNotMatch(html, /id="sidebar-toggle"/);
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
@@ -40,6 +44,11 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(app, /scrollIntoView/);
   assert.match(app, /IntersectionObserver/);
   assert.match(app, /setInterval/);
+  assert.match(app, /\/api\/threads\?source=/);
+  assert.match(app, /CWD: \$\{state\.cwd\}/);
+  assert.match(app, /Source: \$\{sourceLabel\(state\.threadSource\)\}/);
+  assert.doesNotMatch(app, /`\[\$\{sourceLabel\(thread\.source\)\}\]/);
+  assert.doesNotMatch(app, /option\.textContent = `\$\{option\.textContent\} ·/);
   assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
   assert.match(css, /grid-template-columns/);
   assert.match(css, /\.shortcut-help \{/);
@@ -137,6 +146,8 @@ test("frontend helpers filter messages, select genuine user articles, and naviga
     isNearBottom,
     jumpToMessage,
     selectUserMessageArticles,
+    sourceLabel,
+    sourceLabelForFilter,
   } = await import(
     "../skill/conversation-navigator/assets/web/app.js"
   );
@@ -147,6 +158,9 @@ test("frontend helpers filter messages, select genuine user articles, and naviga
   ];
   assert.deepEqual(filterNavigation(navigation, "runtime"), [navigation[0]]);
   assert.deepEqual(filterNavigation(navigation, " 权限 "), [navigation[1]]);
+  assert.equal(sourceLabel("vscode"), "VS Code");
+  assert.equal(sourceLabel("cli"), "Codex CLI");
+  assert.equal(sourceLabelForFilter("all"), "VS Code or Codex CLI");
   assert.equal(
     isNearBottom({ scrollHeight: 1_000, scrollTop: 780, clientHeight: 200 }),
     true,

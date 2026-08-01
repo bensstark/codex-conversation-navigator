@@ -14,6 +14,7 @@ const rawThread = {
   name: "Runtime",
   preview: "Explain run",
   updatedAt: 42,
+  source: "vscode",
   turns: [
     {
       id: "turn-1",
@@ -46,11 +47,19 @@ async function createWebRoot(t) {
 }
 
 function createFakeClient({ readError } = {}) {
+  const cliThread = {
+    ...rawThread,
+    id: "thread-cli",
+    name: "CLI Runtime",
+    source: "cli",
+  };
   return {
     stopped: 0,
-    async listThreads(cwd) {
+    listCalls: [],
+    async listThreads(cwd, sourceKinds) {
       assert.equal(cwd, "/repo");
-      return [rawThread];
+      this.listCalls.push(sourceKinds);
+      return [rawThread, cliThread].filter((thread) => sourceKinds.includes(thread.source));
     },
     async readThread(threadId) {
       assert.equal(threadId, "thread-1");
@@ -129,15 +138,34 @@ test("serves static assets and thread APIs without authentication", async (t) =>
   const threads = await fetch(apiUrl(navigator.url, "/api/threads"));
   assert.equal(threads.status, 200);
   assert.deepEqual(await threads.json(), {
+    cwd: "/repo",
     threads: [
       {
         id: "thread-1",
         name: "Runtime",
         preview: "Explain run",
         updatedAt: 42,
+        source: "vscode",
+      },
+      {
+        id: "thread-cli",
+        name: "CLI Runtime",
+        preview: "Explain run",
+        updatedAt: 42,
+        source: "cli",
       },
     ],
   });
+  assert.deepEqual(client.listCalls[0], ["vscode", "cli"]);
+
+  const cliThreads = await fetch(apiUrl(navigator.url, "/api/threads?source=cli"));
+  assert.equal(cliThreads.status, 200);
+  assert.deepEqual((await cliThreads.json()).threads.map(({ source }) => source), ["cli"]);
+  assert.deepEqual(client.listCalls[1], ["cli"]);
+
+  const invalidSource = await fetch(apiUrl(navigator.url, "/api/threads?source=desktop"));
+  assert.equal(invalidSource.status, 400);
+  assert.deepEqual(await invalidSource.json(), { error: "Invalid source filter" });
 
   const thread = await fetch(apiUrl(navigator.url, "/api/threads/thread-1"));
   assert.equal(thread.status, 200);

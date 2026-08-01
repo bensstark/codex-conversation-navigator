@@ -1,6 +1,6 @@
 ---
 name: conversation-navigator
-description: Use when the user wants to browse or search local Codex conversation history by user message, open a clickable message outline, or locate an earlier Codex prompt in the current project.
+description: Use when the user wants to browse or search local VS Code or Codex CLI conversation history by user message, open a clickable message outline, filter conversations by source, or locate an earlier Codex prompt in the current project.
 ---
 
 # Conversation Navigator
@@ -24,7 +24,9 @@ Use `--no-open` only when automatic browser opening is unwanted.
 ## Behavior and Boundaries
 
 - Treat the viewer as read-only. It calls Codex App Server only to list and read threads.
-- Filter to VS Code threads whose stored working directory exactly matches the launch directory.
+- Filter to VS Code and Codex CLI threads whose stored working directory exactly matches the launch directory.
+- Let the user filter the thread list between all sources, VS Code, and Codex CLI.
+- Show the exact launch working directory in the status bar.
 - Explain an empty result in terms of that exact-directory filter and suggest relaunching with the appropriate `--cwd` value.
 - Warn that the server has no access control, so any process on the same machine can read its conversation API while it is running.
 - Do not claim this can scroll or alter the official Codex panel. Clicking a user message navigates within the companion page.

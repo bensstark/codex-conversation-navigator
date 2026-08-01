@@ -45,7 +45,7 @@ function createFakeProcess(onMessage) {
   };
 }
 
-test("initializes and reads VS Code threads", async () => {
+test("initializes and reads VS Code and CLI threads", async () => {
   let fake;
   fake = createFakeProcess((message) => {
     if (message.method === "initialize") {
@@ -74,13 +74,59 @@ test("initializes and reads VS Code threads", async () => {
   });
   assert.deepEqual(fake.requests[2].params, {
     cwd: "/repo",
-    sourceKinds: ["vscode"],
+    sourceKinds: ["vscode", "cli"],
     sortKey: "updated_at",
     sortDirection: "desc",
+    limit: 100,
   });
 
   client.stop();
   assert.equal(fake.child.killed, true);
+});
+
+test("passes a selected source filter to App Server", async () => {
+  let fake;
+  fake = createFakeProcess((message) => {
+    if (message.method === "initialize") {
+      fake.respond(message.id, {});
+    } else if (message.method === "thread/list") {
+      fake.respond(message.id, { data: [] });
+    }
+  });
+
+  const client = new AppServerClient({ spawnProcess: () => fake.child });
+  await client.start();
+  await client.listThreads("/repo", ["cli"]);
+
+  assert.deepEqual(fake.requests[2].params.sourceKinds, ["cli"]);
+  client.stop();
+});
+
+test("lists every page of matching threads", async () => {
+  let fake;
+  fake = createFakeProcess((message) => {
+    if (message.method === "initialize") {
+      fake.respond(message.id, {});
+    } else if (message.method === "thread/list" && !message.params.cursor) {
+      fake.respond(message.id, {
+        data: [{ id: "thread-1" }],
+        nextCursor: "page-2",
+      });
+    } else if (message.method === "thread/list") {
+      fake.respond(message.id, { data: [{ id: "thread-2" }] });
+    }
+  });
+
+  const client = new AppServerClient({ spawnProcess: () => fake.child });
+  await client.start();
+
+  assert.deepEqual(await client.listThreads("/repo"), [
+    { id: "thread-1" },
+    { id: "thread-2" },
+  ]);
+  assert.equal(fake.requests[2].params.cursor, undefined);
+  assert.equal(fake.requests[3].params.cursor, "page-2");
+  client.stop();
 });
 
 test("rejects App Server error responses", async () => {

@@ -74,14 +74,30 @@ h1 {
   box-shadow: 0 1px 0 var(--line);
 }
 
+.topbar-controls {
+  min-width: min(600px, 58vw);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.source-picker,
 .thread-picker {
-  min-width: min(440px, 52vw);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.source-picker {
+  flex: 0 0 180px;
+}
+
+.thread-picker {
+  min-width: 0;
+  flex: 1 1 360px;
 }
 
 select,
@@ -571,8 +587,15 @@ body.topbar-hidden main {
     padding: 16px;
   }
 
-  .thread-picker {
+  .topbar-controls {
     min-width: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .source-picker {
+    flex-basis: auto;
   }
 
   main {

@@ -92,14 +92,24 @@ export class AppServerClient {
     this.child.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
-  async listThreads(cwd) {
-    const response = await this.request("thread/list", {
-      cwd,
-      sourceKinds: ["vscode"],
-      sortKey: "updated_at",
-      sortDirection: "desc",
-    });
-    return response.data ?? [];
+  async listThreads(cwd, sourceKinds = ["vscode", "cli"]) {
+    const threads = [];
+    let cursor;
+
+    do {
+      const response = await this.request("thread/list", {
+        cwd,
+        sourceKinds,
+        sortKey: "updated_at",
+        sortDirection: "desc",
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      });
+      threads.push(...(response.data ?? []));
+      cursor = response.nextCursor ?? null;
+    } while (cursor);
+
+    return threads;
   }
 
   async readThread(threadId) {

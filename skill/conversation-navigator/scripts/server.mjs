@@ -31,6 +31,12 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+const SOURCE_FILTERS = new Map([
+  ["all", ["vscode", "cli"]],
+  ["vscode", ["vscode"]],
+  ["cli", ["cli"]],
+]);
+
 function sendJson(response, status, value) {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
@@ -112,13 +118,21 @@ export async function createNavigatorServer({
     try {
       if (requestUrl.pathname.startsWith("/api/")) {
         if (requestUrl.pathname === "/api/threads") {
-          const threads = await client.listThreads(cwd);
+          const source = requestUrl.searchParams.get("source") ?? "all";
+          const sourceKinds = SOURCE_FILTERS.get(source);
+          if (!sourceKinds) {
+            sendJson(response, 400, { error: "Invalid source filter" });
+            return;
+          }
+          const threads = await client.listThreads(cwd, sourceKinds);
           sendJson(response, 200, {
+            cwd,
             threads: threads.map((thread) => ({
               id: thread.id,
               name: thread.name ?? null,
               preview: thread.preview ?? "",
               updatedAt: thread.updatedAt ?? null,
+              source: thread.source,
             })),
           });
           return;
