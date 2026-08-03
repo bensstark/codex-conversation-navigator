@@ -162,7 +162,7 @@ test("code viewer font size controls clamp and update the code surface", () => {
 
   assert.equal(clampFontSize(7), 10);
   assert.equal(clampFontSize(30), 24);
-  assert.equal(clampFontSize("not-a-number"), 14);
+  assert.equal(clampFontSize("not-a-number"), 16);
   assert.equal(setCodeFontSize(document, elements, 18), 18);
   assert.equal(elements.scroll.style.getPropertyValue("--code-font-size"), "18px");
   assert.equal(elements.fontSize.textContent, "18px");

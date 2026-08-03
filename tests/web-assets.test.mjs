@@ -85,7 +85,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(viewerHtml, /id="file-path" class="file-path"/);
   assert.match(viewerHtml, /id="font-decrease"/);
   assert.match(viewerHtml, /id="font-increase"/);
-  assert.match(viewerHtml, /id="font-size"/);
+  assert.match(viewerHtml, /id="font-size"[^>]*>16px<\/span>/);
   assert.match(viewerHtml, /id="line-numbers"/);
   assert.match(viewerHtml, /id="source-code"/);
   assert.match(viewerHtml, /src="\/file-viewer\.js"/);
@@ -105,6 +105,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(viewerCss, /\.file-path/);
   assert.match(viewerCss, /\.font-controls/);
   assert.match(viewerCss, /--code-font-size/);
+  assert.match(viewerCss, /var\(--code-font-size, 16px\)\/1\.55\s+ui-monospace, SFMono-Regular, Menlo, Consolas, monospace/);
+  assert.match(viewerCss, /\.code-gutter,\s*\.code-content \{[\s\S]*?font-family:\s*ui-monospace, SFMono-Regular, Menlo, Consolas, monospace/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-toolbar/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-page/);
   assert.match(

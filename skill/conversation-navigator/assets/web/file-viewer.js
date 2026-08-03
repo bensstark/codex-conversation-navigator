@@ -3,7 +3,7 @@ import hljs from "./vendor/highlight.min.js";
 
 const MAX_HIGHLIGHT_LENGTH = 100_000;
 const SAFE_HIGHLIGHT_CLASS = /^hljs-[a-z0-9_-]+$/i;
-const DEFAULT_FONT_SIZE = 14;
+const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 24;
 const FONT_SIZE_STEP = 1;
