@@ -47,6 +47,15 @@ a {
   backdrop-filter: blur(18px);
 }
 
+body.topbar-hidden .file-toolbar {
+  display: none;
+}
+
+body.topbar-hidden .file-page {
+  height: 100%;
+  min-height: 100vh;
+}
+
 .back-link {
   color: var(--accent);
   font-size: 0.82rem;

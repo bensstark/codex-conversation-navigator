@@ -3,6 +3,12 @@ import hljs from "./vendor/highlight.min.js";
 
 const MAX_HIGHLIGHT_LENGTH = 100_000;
 const SAFE_HIGHLIGHT_CLASS = /^hljs-[a-z0-9_-]+$/i;
+const EDITABLE_TARGET_SELECTOR = [
+  "input",
+  "textarea",
+  "select",
+  '[contenteditable]:not([contenteditable="false"])',
+].join(", ");
 
 const LANGUAGE_BY_FILE_NAME = new Map([
   ["dockerfile", "bash"],
@@ -105,6 +111,35 @@ const LANGUAGE_LABELS = new Map([
   ["xml", "HTML / XML"],
   ["yaml", "YAML"],
 ]);
+
+function isReadingShortcut(event, key) {
+  if (typeof event?.key !== "string"
+      || event.key.toLocaleLowerCase() !== key
+      || event.ctrlKey
+      || event.altKey
+      || event.metaKey
+      || event.repeat) {
+    return false;
+  }
+  return typeof event.target?.closest !== "function"
+    || !event.target.closest(EDITABLE_TARGET_SELECTOR);
+}
+
+export function isTopbarToggleShortcut(event) {
+  return isReadingShortcut(event, "q");
+}
+
+export function toggleTopbar(documentNode) {
+  documentNode?.body?.classList.toggle("topbar-hidden");
+}
+
+export function installKeyboardShortcuts(documentNode) {
+  documentNode?.addEventListener("keydown", (event) => {
+    if (isTopbarToggleShortcut(event)) {
+      toggleTopbar(documentNode);
+    }
+  });
+}
 
 function fileName(filePath) {
   return String(filePath ?? "")
@@ -308,5 +343,6 @@ async function bootstrap() {
 }
 
 if (typeof document !== "undefined" && document.getElementById("source-code")) {
+  installKeyboardShortcuts(document);
   void bootstrap();
 }

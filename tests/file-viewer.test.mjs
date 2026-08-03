@@ -5,9 +5,12 @@ import { JSDOM } from "jsdom";
 
 import {
   detectLanguage,
+  installKeyboardShortcuts,
+  isTopbarToggleShortcut,
   languageLabel,
   parseFileReference,
   renderCodeViewer,
+  toggleTopbar,
 } from "../skill/conversation-navigator/assets/web/file-viewer.js";
 
 function createViewerDom() {
@@ -116,4 +119,31 @@ test("renderCodeViewer sanitizes highlighter output and falls back safely", () =
   assert.equal(elements.code.querySelector("img"), null);
   assert.equal(elements.code.querySelector("[onclick]"), null);
   assert.equal(elements.code.querySelector("span")?.getAttribute("class"), "hljs-keyword");
+});
+
+test("code viewer Q shortcut hides and restores the top bar", () => {
+  const { document } = createViewerDom();
+  const event = (overrides = {}) => ({
+    key: "q",
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    repeat: false,
+    target: document.body,
+    ...overrides,
+  });
+
+  assert.equal(isTopbarToggleShortcut(event()), true);
+  assert.equal(isTopbarToggleShortcut(event({ key: "Q" })), true);
+  assert.equal(isTopbarToggleShortcut(event({ ctrlKey: true })), false);
+  assert.equal(isTopbarToggleShortcut(event({ repeat: true })), false);
+
+  installKeyboardShortcuts(document);
+  document.dispatchEvent(new document.defaultView.KeyboardEvent("keydown", { key: "q" }));
+  assert.equal(document.body.classList.contains("topbar-hidden"), true);
+  document.dispatchEvent(new document.defaultView.KeyboardEvent("keydown", { key: "q" }));
+  assert.equal(document.body.classList.contains("topbar-hidden"), false);
+
+  toggleTopbar(document);
+  assert.equal(document.body.classList.contains("topbar-hidden"), true);
 });

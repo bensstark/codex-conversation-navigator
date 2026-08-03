@@ -15,6 +15,7 @@
 - 在状态信息栏显示当前工作目录（CWD）
 - 点击用户消息后立即跳转
 - 按 `S` 隐藏或显示侧栏，按 `Q` 隐藏或显示顶栏
+- 打开的本地代码查看器同样支持按 `Q` 隐藏或恢复顶栏
 - 仅在本机 `127.0.0.1` 运行，不设访问控制，也不会修改 Codex 对话
 
 ### 要求
@@ -66,6 +67,7 @@ Key features:
 - Shows the current working directory (CWD) in the status bar
 - Jumps instantly when a user message is selected
 - Press `S` to toggle the sidebar and `Q` to toggle the top bar
+- The local code viewer also supports `Q` to hide or restore its top bar
 - Runs only on local `127.0.0.1`, has no access control, and never modifies Codex conversations
 
 ### Requirements

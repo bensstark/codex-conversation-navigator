@@ -85,6 +85,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(viewerHtml, /id="source-code"/);
   assert.match(viewerHtml, /src="\/file-viewer\.js"/);
   assert.match(viewer, /detectLanguage/);
+  assert.match(viewer, /installKeyboardShortcuts/);
+  assert.match(viewer, /isTopbarToggleShortcut/);
   assert.match(viewer, /\["\.py", "python"\]/);
   assert.match(viewer, /\["\.rs", "rust"\]/);
   assert.match(viewer, /\["\.java", "java"\]/);
@@ -93,6 +95,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.doesNotMatch(viewer, /\.outerHTML\s*=/);
   assert.match(viewerCss, /\.code-gutter/);
   assert.match(viewerCss, /\.line-focus/);
+  assert.match(viewerCss, /body\.topbar-hidden \.file-toolbar/);
+  assert.match(viewerCss, /body\.topbar-hidden \.file-page/);
   assert.match(
     css,
     /\.message-text th\[align="left"\],[\s\S]*?\.message-text td\[align="left"\][\s\S]*?text-align:\s*left/,
