@@ -10,6 +10,7 @@
 - 支持 Markdown 和代码语法高亮
 - 支持打开 `file://` 和 Codex 常见的 `/绝对路径/file.py:行号` 本地文件链接
 - 本地代码查看器显示行号、定位到指定行，并按扩展名高亮 Python、Rust、Java、JSON、JavaScript/TypeScript、Go、C/C++、C#、Kotlin、Swift、Shell、SQL、HTML/XML、CSS、Markdown、YAML 等
+- 代码查看器顶栏支持调节字号（10–24px）
 - 代码块提供一键复制按钮
 - 同时显示 VS Code 与 Codex CLI 对话，并可按来源筛选
 - 在状态信息栏显示当前工作目录（CWD）
@@ -62,6 +63,7 @@ Key features:
 - Renders Markdown with syntax-highlighted code
 - Opens `file://` URLs and Codex-style `/absolute/path/file.py:line` local file links
 - Opens a read-only code viewer with line numbers, line targeting, and extension-aware highlighting for Python, Rust, Java, JSON, JavaScript/TypeScript, Go, C/C++, C#, Kotlin, Swift, Shell, SQL, HTML/XML, CSS, Markdown, YAML, and more
+- The code viewer toolbar supports font-size adjustment from 10px to 24px
 - Provides one-click copy buttons for code blocks
 - Shows both VS Code and Codex CLI conversations with a source filter
 - Shows the current working directory (CWD) in the status bar

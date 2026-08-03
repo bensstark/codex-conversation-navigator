@@ -3,6 +3,10 @@ import hljs from "./vendor/highlight.min.js";
 
 const MAX_HIGHLIGHT_LENGTH = 100_000;
 const SAFE_HIGHLIGHT_CLASS = /^hljs-[a-z0-9_-]+$/i;
+const DEFAULT_FONT_SIZE = 14;
+const MIN_FONT_SIZE = 10;
+const MAX_FONT_SIZE = 24;
+const FONT_SIZE_STEP = 1;
 const EDITABLE_TARGET_SELECTOR = [
   "input",
   "textarea",
@@ -213,6 +217,9 @@ function lineInfo(source) {
 function setLineFocus(document, elements, line) {
   if (!elements.focus || !line) {
     elements.focus?.setAttribute("hidden", "");
+    if (elements.focus) {
+      delete elements.focus.dataset.line;
+    }
     return;
   }
   const computed = document.defaultView?.getComputedStyle(elements.codeContent);
@@ -220,7 +227,34 @@ function setLineFocus(document, elements, line) {
   const paddingTop = Number.parseFloat(computed?.paddingTop ?? "") || 16;
   elements.focus.style.top = `${paddingTop + (line - 1) * lineHeight}px`;
   elements.focus.style.height = `${lineHeight}px`;
+  elements.focus.dataset.line = String(line);
   elements.focus.removeAttribute("hidden");
+}
+
+export function clampFontSize(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return DEFAULT_FONT_SIZE;
+  }
+  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(numeric)));
+}
+
+export function setCodeFontSize(document, elements, value) {
+  const size = clampFontSize(value);
+  elements.scroll.style.setProperty("--code-font-size", `${size}px`);
+  elements.fontSize.textContent = `${size}px`;
+  const focusedLine = Number(elements.focus?.dataset.line);
+  if (Number.isInteger(focusedLine) && focusedLine > 0) {
+    setLineFocus(document, elements, focusedLine);
+  }
+  return size;
+}
+
+export function adjustCodeFontSize(document, elements, delta) {
+  const current = Number.parseFloat(
+    elements.scroll.style.getPropertyValue("--code-font-size"),
+  ) || DEFAULT_FONT_SIZE;
+  return setCodeFontSize(document, elements, current + delta);
 }
 
 export function renderCodeViewer(document, elements, source, {
@@ -272,6 +306,9 @@ function elementsFor(document) {
     path: document.getElementById("file-path"),
     status: document.getElementById("file-status"),
     scroll: document.getElementById("code-scroll"),
+    fontDecrease: document.getElementById("font-decrease"),
+    fontIncrease: document.getElementById("font-increase"),
+    fontSize: document.getElementById("font-size"),
     gutter: document.getElementById("line-numbers"),
     codeContent: document.getElementById("code-content"),
     code: document.getElementById("source-code"),
@@ -300,6 +337,13 @@ async function readLocalFile(reference) {
 
 async function bootstrap() {
   const elements = elementsFor(document);
+  setCodeFontSize(document, elements, DEFAULT_FONT_SIZE);
+  elements.fontDecrease.addEventListener("click", () => {
+    adjustCodeFontSize(document, elements, -FONT_SIZE_STEP);
+  });
+  elements.fontIncrease.addEventListener("click", () => {
+    adjustCodeFontSize(document, elements, FONT_SIZE_STEP);
+  });
   const reference = new URL(globalThis.location.href).searchParams.get("path");
   if (!reference) {
     elements.status.textContent = "No local file was specified.";

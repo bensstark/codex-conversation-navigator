@@ -5,17 +5,23 @@ import { JSDOM } from "jsdom";
 
 import {
   detectLanguage,
+  adjustCodeFontSize,
+  clampFontSize,
   installKeyboardShortcuts,
   isTopbarToggleShortcut,
   languageLabel,
   parseFileReference,
   renderCodeViewer,
+  setCodeFontSize,
   toggleTopbar,
 } from "../skill/conversation-navigator/assets/web/file-viewer.js";
 
 function createViewerDom() {
   const dom = new JSDOM(`<!doctype html><body>
     <div id="code-scroll">
+      <button id="font-decrease"></button>
+      <button id="font-increase"></button>
+      <span id="font-size"></span>
       <div id="line-numbers"></div>
       <pre id="code-content"><code id="source-code"></code><span id="line-focus" hidden></span></pre>
     </div>
@@ -26,6 +32,9 @@ function createViewerDom() {
     document,
     elements: {
       scroll: document.getElementById("code-scroll"),
+      fontDecrease: document.getElementById("font-decrease"),
+      fontIncrease: document.getElementById("font-increase"),
+      fontSize: document.getElementById("font-size"),
       gutter: document.getElementById("line-numbers"),
       codeContent: document.getElementById("code-content"),
       code: document.getElementById("source-code"),
@@ -146,4 +155,17 @@ test("code viewer Q shortcut hides and restores the top bar", () => {
 
   toggleTopbar(document);
   assert.equal(document.body.classList.contains("topbar-hidden"), true);
+});
+
+test("code viewer font size controls clamp and update the code surface", () => {
+  const { document, elements } = createViewerDom();
+
+  assert.equal(clampFontSize(7), 10);
+  assert.equal(clampFontSize(30), 24);
+  assert.equal(clampFontSize("not-a-number"), 14);
+  assert.equal(setCodeFontSize(document, elements, 18), 18);
+  assert.equal(elements.scroll.style.getPropertyValue("--code-font-size"), "18px");
+  assert.equal(elements.fontSize.textContent, "18px");
+  assert.equal(adjustCodeFontSize(document, elements, 1), 19);
+  assert.equal(adjustCodeFontSize(document, elements, -20), 10);
 });
