@@ -81,6 +81,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
   assert.match(viewerHtml, /<title>Code Viewer<\/title>/);
+  assert.match(viewerHtml, /<body class="topbar-hidden">/);
   assert.match(viewerHtml, /id="file-path" class="file-path"/);
   assert.match(viewerHtml, /id="line-numbers"/);
   assert.match(viewerHtml, /id="source-code"/);
