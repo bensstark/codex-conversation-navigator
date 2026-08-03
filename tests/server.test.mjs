@@ -38,6 +38,9 @@ async function createWebRoot(t) {
     writeFile(join(directory, "app.js"), "console.log('navigator')"),
     writeFile(join(directory, "style.css"), "body{}"),
     writeFile(join(directory, "markdown.js"), "export function renderMarkdown() {}"),
+    writeFile(join(directory, "file-viewer.html"), "<html>viewer</html>"),
+    writeFile(join(directory, "file-viewer.js"), "console.log('viewer')"),
+    writeFile(join(directory, "file-viewer.css"), "body{}"),
     writeFile(join(vendorDirectory, "marked.esm.js"), "export const marked = {};"),
     writeFile(join(vendorDirectory, "purify.es.mjs"), "export default () => ({});"),
     writeFile(join(vendorDirectory, "highlight.min.js"), "export default {};"),
@@ -109,7 +112,13 @@ test("serves static assets and thread APIs without authentication", async (t) =>
   assert.match(markdown.headers.get("content-type"), /^text\/javascript/);
   assert.equal(markdown.headers.get("referrer-policy"), "no-referrer");
 
-  for (const path of ["/app.js", "/style.css"]) {
+  for (const path of [
+    "/app.js",
+    "/style.css",
+    "/file-viewer.html",
+    "/file-viewer.js",
+    "/file-viewer.css",
+  ]) {
     const asset = await fetch(apiUrl(navigator.url, path));
     assert.equal(asset.status, 200);
     assert.equal(asset.headers.get("referrer-policy"), "no-referrer");
@@ -226,9 +235,13 @@ test("serves local file links only from the launch directory", async (t) => {
   assert.match(endpoint.headers.get("content-security-policy"), /default-src 'none'/);
   assert.equal(await endpoint.text(), "const first = 1;\nconst second = 2;\n");
 
-  const absoluteLink = await fetch(apiUrl(navigator.url, `${localFile}:1`));
-  assert.equal(absoluteLink.status, 200);
-  assert.equal(await absoluteLink.text(), "const first = 1;\nconst second = 2;\n");
+  const absoluteLink = await fetch(apiUrl(navigator.url, `${localFile}:1`), {
+    redirect: "manual",
+  });
+  assert.equal(absoluteLink.status, 302);
+  const viewerLocation = new URL(absoluteLink.headers.get("location"), navigator.url);
+  assert.equal(viewerLocation.pathname, "/file-viewer.html");
+  assert.equal(viewerLocation.searchParams.get("path"), `${localFile}:1`);
 
   const outsideResponse = await fetch(apiUrl(
     navigator.url,

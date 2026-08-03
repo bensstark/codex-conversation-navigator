@@ -18,6 +18,9 @@ const STATIC_FILES = new Map([
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/style.css", ["style.css", "text/css; charset=utf-8"]],
   ["/markdown.js", ["markdown.js", "text/javascript; charset=utf-8"]],
+  ["/file-viewer.html", ["file-viewer.html", "text/html; charset=utf-8"]],
+  ["/file-viewer.js", ["file-viewer.js", "text/javascript; charset=utf-8"]],
+  ["/file-viewer.css", ["file-viewer.css", "text/css; charset=utf-8"]],
   ["/vendor/marked.esm.js", ["vendor/marked.esm.js", "text/javascript; charset=utf-8"]],
   ["/vendor/purify.es.mjs", ["vendor/purify.es.mjs", "text/javascript; charset=utf-8"]],
   ["/vendor/highlight.min.js", ["vendor/highlight.min.js", "text/javascript; charset=utf-8"]],
@@ -144,6 +147,23 @@ async function sendLocalFile(response, file) {
   }
   response.writeHead(200, localFileHeaders(file.path, contents.byteLength));
   response.end(contents);
+}
+
+function localFileViewerLocation(requestUrl, requestedPath) {
+  const viewerUrl = new URL("/file-viewer.html", requestUrl);
+  viewerUrl.searchParams.set("path", requestedPath);
+  return `${viewerUrl.pathname}${viewerUrl.search}`;
+}
+
+function redirectToLocalFileViewer(response, requestUrl, requestedPath) {
+  response.writeHead(302, {
+    location: localFileViewerLocation(requestUrl, requestedPath),
+    "content-security-policy": CONTENT_SECURITY_POLICY,
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  });
+  response.end();
 }
 
 function sendLocalFileError(response, error) {
@@ -293,8 +313,8 @@ export async function createNavigatorServer({
         if (requestedPath === launchPath
             || requestedPath.startsWith(`${launchPath}${sep}`)) {
           try {
-            const file = await resolveLocalFile(cwd, requestedPath);
-            await sendLocalFile(response, file);
+            await resolveLocalFile(cwd, requestedPath);
+            redirectToLocalFileViewer(response, requestUrl, requestedPath);
           } catch (error) {
             if (!sendLocalFileError(response, error)) {
               throw error;

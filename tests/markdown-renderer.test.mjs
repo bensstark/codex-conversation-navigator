@@ -258,7 +258,7 @@ test("renderMarkdown proxies local file URLs through the read-only endpoint", ()
   const links = [...container.querySelectorAll("a")];
   const endpoint = new URL(links[0].getAttribute("href"), "http://127.0.0.1/");
 
-  assert.equal(endpoint.pathname, "/api/local-file");
+  assert.equal(endpoint.pathname, "/file-viewer.html");
   assert.equal(endpoint.searchParams.get("path"), "/home/hzy/claw/src/app.py:12");
   assert.equal(links[0].getAttribute("target"), "_blank");
   assert.equal(links[0].getAttribute("rel"), "noopener noreferrer");

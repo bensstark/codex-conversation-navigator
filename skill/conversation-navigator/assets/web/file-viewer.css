@@ -1,0 +1,246 @@
+:root {
+  color-scheme: light dark;
+  --background: #f3f0e8;
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: #fffdf8;
+  --text: #25241f;
+  --muted: #716f65;
+  --line: rgba(37, 36, 31, 0.14);
+  --accent: #b84f2f;
+  --code-background: #161b22;
+  --code-text: #e6edf3;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(209, 157, 89, 0.2), transparent 32rem),
+    var(--background);
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.file-toolbar {
+  height: 76px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+}
+
+.back-link {
+  color: var(--accent);
+  font-size: 0.82rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.file-heading {
+  min-width: 0;
+}
+
+.file-heading h1 {
+  margin: 0;
+  overflow: hidden;
+  font: 650 1.2rem/1.2 Georgia, "Times New Roman", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-heading p,
+.file-status {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#copy-file {
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--panel-strong);
+  cursor: pointer;
+}
+
+#copy-file:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+#copy-file:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.file-page {
+  height: calc(100% - 76px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 16px 24px 24px;
+}
+
+.file-status[data-kind="error"] {
+  color: #b42318;
+}
+
+.code-scroll {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--code-background);
+  box-shadow: 0 18px 45px rgba(48, 39, 24, 0.12);
+  color: var(--code-text);
+  font: 0.88rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.code-gutter,
+.code-content {
+  min-height: 100%;
+  margin: 0;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  line-height: inherit;
+}
+
+.code-gutter {
+  min-width: 3.5rem;
+  padding-right: 12px;
+  padding-left: 16px;
+  border-right: 1px solid rgba(230, 237, 243, 0.12);
+  color: #7d8590;
+  text-align: right;
+  user-select: none;
+  white-space: pre;
+}
+
+.code-content {
+  position: relative;
+  min-width: max-content;
+  padding-right: 28px;
+  padding-left: 16px;
+  white-space: pre;
+}
+
+.code-content code {
+  position: relative;
+  z-index: 1;
+  font: inherit;
+}
+
+.line-focus {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  border-top: 1px solid rgba(255, 205, 91, 0.35);
+  border-bottom: 1px solid rgba(255, 205, 91, 0.35);
+  background: rgba(255, 205, 91, 0.11);
+  pointer-events: none;
+}
+
+.hljs {
+  color: var(--code-text);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #ff7b72;
+}
+
+.hljs-string,
+.hljs-attribute,
+.hljs-template-tag,
+.hljs-template-variable {
+  color: #a5d6ff;
+}
+
+.hljs-title,
+.hljs-name,
+.hljs-type,
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #d2a8ff;
+}
+
+.hljs-built_in,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #79c0ff;
+}
+
+.hljs-variable,
+.hljs-params,
+.hljs-property {
+  color: #ffa657;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.hljs-meta,
+.hljs-doctag {
+  color: #7ee787;
+}
+
+@media (max-width: 700px) {
+  .file-toolbar {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding-inline: 14px;
+  }
+
+  #copy-file {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .back-link {
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-page {
+    padding: 12px 10px 14px;
+  }
+}

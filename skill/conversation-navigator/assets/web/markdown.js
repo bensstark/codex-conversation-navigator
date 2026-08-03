@@ -76,7 +76,7 @@ function localFileEndpoint(document, value) {
     path = path.slice(1);
   }
 
-  const endpoint = new URL("/api/local-file", document.baseURI);
+  const endpoint = new URL("/file-viewer.html", document.baseURI);
   endpoint.searchParams.set("path", path);
   return endpoint.href;
 }
@@ -125,8 +125,8 @@ function hardenFragment(document, fragment) {
     if (href !== null && !hasAllowedLink(document, href)) {
       link.removeAttribute("href");
     } else if (href !== null && isFileLink(document, href)) {
-      // Browsers cannot reliably open Linux/WSL file URLs, so proxy them through
-      // the read-only local-file endpoint constrained by the launch directory.
+      // Browsers cannot reliably open Linux/WSL file URLs, so open the local
+      // read-only code viewer. The viewer fetches the constrained file endpoint.
       const endpoint = localFileEndpoint(document, href);
       if (endpoint) {
         link.setAttribute("href", endpoint);
