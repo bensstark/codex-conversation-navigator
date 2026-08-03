@@ -269,6 +269,7 @@ function elementsFor(document) {
   return {
     name: document.getElementById("file-name"),
     meta: document.getElementById("file-meta"),
+    path: document.getElementById("file-path"),
     status: document.getElementById("file-status"),
     scroll: document.getElementById("code-scroll"),
     gutter: document.getElementById("line-numbers"),
@@ -308,6 +309,8 @@ async function bootstrap() {
   const location = parseFileReference(reference);
   const name = fileName(location.path);
   elements.name.textContent = name;
+  elements.path.textContent = location.path;
+  elements.path.title = location.path;
 
   try {
     const source = await readLocalFile(reference);
@@ -319,7 +322,8 @@ async function bootstrap() {
     const lineSuffix = location.line ? ` · line ${location.line}` : "";
     const highlightSuffix = result.highlighted ? "" : " · plain text";
     elements.meta.textContent = `${language} · ${result.lineCount} lines${lineSuffix}${highlightSuffix}`;
-    elements.status.textContent = location.path;
+    elements.status.textContent = "Ready";
+    elements.status.setAttribute("hidden", "");
     elements.scroll.removeAttribute("hidden");
     elements.copy.removeAttribute("disabled");
     elements.copy.addEventListener("click", async () => {
@@ -337,6 +341,7 @@ async function bootstrap() {
       elements.scroll.scrollTop = Math.max(0, (location.line - 4) * lineHeight);
     }
   } catch (error) {
+    elements.status.removeAttribute("hidden");
     elements.status.textContent = error.message;
     elements.status.dataset.kind = "error";
   }

@@ -36,7 +36,7 @@ a {
 }
 
 .file-toolbar {
-  height: 76px;
+  height: 92px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -89,6 +89,13 @@ body.topbar-hidden .file-page {
   white-space: nowrap;
 }
 
+.file-path {
+  max-width: min(70vw, 72rem);
+  color: var(--muted);
+  cursor: help;
+  font-size: 0.7rem;
+}
+
 #copy-file {
   padding: 8px 13px;
   border: 1px solid var(--line);
@@ -108,7 +115,7 @@ body.topbar-hidden .file-page {
 }
 
 .file-page {
-  height: calc(100% - 76px);
+  height: calc(100% - 92px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -118,6 +125,10 @@ body.topbar-hidden .file-page {
 
 .file-status[data-kind="error"] {
   color: #b42318;
+}
+
+.file-status[hidden] {
+  display: none;
 }
 
 .code-scroll {

@@ -81,6 +81,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
   assert.match(viewerHtml, /<title>Code Viewer<\/title>/);
+  assert.match(viewerHtml, /id="file-path" class="file-path"/);
   assert.match(viewerHtml, /id="line-numbers"/);
   assert.match(viewerHtml, /id="source-code"/);
   assert.match(viewerHtml, /src="\/file-viewer\.js"/);
@@ -95,6 +96,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.doesNotMatch(viewer, /\.outerHTML\s*=/);
   assert.match(viewerCss, /\.code-gutter/);
   assert.match(viewerCss, /\.line-focus/);
+  assert.match(viewerCss, /\.file-path/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-toolbar/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-page/);
   assert.match(
