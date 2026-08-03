@@ -15,7 +15,7 @@ const ALLOWED_ATTR = [
   "colspan", "rowspan", "span", "start", "reversed", "value", "width", "height",
   "cite", "datetime", "dir", "lang", "scope", "class",
 ];
-const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "file:"]);
 const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const SAFE_TABLE_ALIGNMENTS = new Set(["left", "center", "right"]);
 const SAFE_DATA_IMAGE = /^data:image\/(?:avif|bmp|gif|jpe?g|png|webp)(?:;[^,]*)?,/i;
@@ -41,6 +41,44 @@ function hasAllowedLink(document, value) {
   } catch {
     return false;
   }
+}
+
+function isFileLink(document, value) {
+  try {
+    return new URL(value.trim(), document.baseURI).protocol === "file:";
+  } catch {
+    return /^file:/i.test(value.trim());
+  }
+}
+
+function localFileEndpoint(document, value) {
+  let url;
+  try {
+    url = new URL(value.trim(), document.baseURI);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "file:" || (url.hostname && url.hostname !== "localhost")) {
+    return null;
+  }
+
+  let path;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  if (!path) {
+    return null;
+  }
+  // A file URL on Windows includes a leading slash before the drive letter.
+  if (/^\/[A-Za-z]:[\\/]/.test(path)) {
+    path = path.slice(1);
+  }
+
+  const endpoint = new URL("/file-viewer.html", document.baseURI);
+  endpoint.searchParams.set("path", path);
+  return endpoint.href;
 }
 
 function hasAllowedImage(document, value) {
@@ -86,6 +124,15 @@ function hardenFragment(document, fragment) {
     const href = link.getAttribute("href");
     if (href !== null && !hasAllowedLink(document, href)) {
       link.removeAttribute("href");
+    } else if (href !== null && isFileLink(document, href)) {
+      // Browsers cannot reliably open Linux/WSL file URLs, so open the local
+      // read-only code viewer. The viewer fetches the constrained file endpoint.
+      const endpoint = localFileEndpoint(document, href);
+      if (endpoint) {
+        link.setAttribute("href", endpoint);
+      } else {
+        link.removeAttribute("href");
+      }
     }
     link.setAttribute("target", "_blank");
     link.setAttribute("rel", "noopener noreferrer");
@@ -124,6 +171,36 @@ function hardenFragment(document, fragment) {
     input.setAttribute("disabled", "");
     if (checked) {
       input.setAttribute("checked", "");
+    }
+  }
+}
+
+function sanitizeMarkdown(purifier, html) {
+  const allowFileHref = (_node, data) => {
+    if (data.attrName === "href" && /^file:/i.test(data.attrValue)) {
+      // DOMPurify does not allow file: by default; hardenFragment converts it
+      // to a same-origin endpoint immediately after this sanitization pass.
+      data.forceKeepAttr = true;
+    }
+  };
+  const canManageHook = typeof purifier.addHook === "function"
+    && typeof purifier.removeHook === "function";
+  if (canManageHook) {
+    purifier.addHook("uponSanitizeAttribute", allowFileHref);
+  }
+  try {
+    return purifier.sanitize(html, {
+      ALLOWED_TAGS,
+      ALLOWED_ATTR,
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
+      RETURN_DOM_FRAGMENT: true,
+      SANITIZE_NAMED_PROPS: true,
+      ALLOW_UNKNOWN_PROTOCOLS: false,
+    });
+  } finally {
+    if (canManageHook) {
+      purifier.removeHook("uponSanitizeAttribute", allowFileHref);
     }
   }
 }
@@ -193,15 +270,7 @@ export function renderMarkdown(document, source, {
       return textFragment(document, text);
     }
     const html = parse(text.replace(LEADING_ZERO_WIDTH, ""));
-    const fragment = purifier.sanitize(html, {
-      ALLOWED_TAGS,
-      ALLOWED_ATTR,
-      ALLOW_DATA_ATTR: false,
-      ALLOW_ARIA_ATTR: false,
-      RETURN_DOM_FRAGMENT: true,
-      SANITIZE_NAMED_PROPS: true,
-      ALLOW_UNKNOWN_PROTOCOLS: false,
-    });
+    const fragment = sanitizeMarkdown(purifier, html);
     hardenFragment(document, fragment);
     highlightCodeBlocks(fragment, purifier, highlighter);
     return fragment;

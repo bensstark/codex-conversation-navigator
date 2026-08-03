@@ -1,8 +1,14 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { resolve } from "node:path";
+import {
+  basename,
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 import { AppServerClient } from "./app-server-client.mjs";
 import { projectThread } from "./transcript.mjs";
@@ -12,6 +18,9 @@ const STATIC_FILES = new Map([
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/style.css", ["style.css", "text/css; charset=utf-8"]],
   ["/markdown.js", ["markdown.js", "text/javascript; charset=utf-8"]],
+  ["/file-viewer.html", ["file-viewer.html", "text/html; charset=utf-8"]],
+  ["/file-viewer.js", ["file-viewer.js", "text/javascript; charset=utf-8"]],
+  ["/file-viewer.css", ["file-viewer.css", "text/css; charset=utf-8"]],
   ["/vendor/marked.esm.js", ["vendor/marked.esm.js", "text/javascript; charset=utf-8"]],
   ["/vendor/purify.es.mjs", ["vendor/purify.es.mjs", "text/javascript; charset=utf-8"]],
   ["/vendor/highlight.min.js", ["vendor/highlight.min.js", "text/javascript; charset=utf-8"]],
@@ -36,6 +45,134 @@ const SOURCE_FILTERS = new Map([
   ["vscode", ["vscode"]],
   ["cli", ["cli"]],
 ]);
+
+const MAX_LOCAL_FILE_BYTES = 4 * 1024 * 1024;
+
+class LocalFileRequestError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function isWithinDirectory(root, target) {
+  const relativePath = relative(root, target);
+  return relativePath === ""
+    || (!relativePath.startsWith(`..${sep}`)
+      && relativePath !== ".."
+      && !isAbsolute(relativePath));
+}
+
+function localFileCandidates(requestedPath) {
+  const candidates = [{ path: requestedPath, line: null }];
+  // Codex file links may append a line or line/column suffix to an absolute path.
+  const lineMatch = requestedPath.match(/^(.*?):(\d+)(?::\d+)?$/);
+  if (lineMatch && lineMatch[1]) {
+    candidates.push({ path: lineMatch[1], line: Number(lineMatch[2]) });
+  }
+  return candidates;
+}
+
+async function resolveLocalFile(cwd, requestedPath) {
+  if (typeof requestedPath !== "string" || !requestedPath.trim()) {
+    throw new LocalFileRequestError(400, "A local file path is required");
+  }
+
+  let root;
+  try {
+    root = await realpath(cwd);
+  } catch {
+    throw new LocalFileRequestError(404, "Local file not found");
+  }
+
+  for (const candidate of localFileCandidates(requestedPath.trim())) {
+    const absolutePath = isAbsolute(candidate.path)
+      ? resolve(candidate.path)
+      : resolve(root, candidate.path);
+    let target;
+    try {
+      target = await realpath(absolutePath);
+    } catch (error) {
+      if (["ENOENT", "ENOTDIR", "EINVAL"].includes(error.code)) {
+        continue;
+      }
+      throw new LocalFileRequestError(403, "Local file cannot be read");
+    }
+
+    if (!isWithinDirectory(root, target)) {
+      throw new LocalFileRequestError(403, "Local file is outside the launch directory");
+    }
+
+    let details;
+    try {
+      details = await stat(target);
+    } catch {
+      throw new LocalFileRequestError(404, "Local file not found");
+    }
+    if (!details.isFile()) {
+      throw new LocalFileRequestError(404, "Local file not found");
+    }
+    if (details.size > MAX_LOCAL_FILE_BYTES) {
+      throw new LocalFileRequestError(413, "Local file is too large to preview");
+    }
+
+    return {
+      path: target,
+      line: candidate.line,
+    };
+  }
+
+  throw new LocalFileRequestError(404, "Local file not found");
+}
+
+function localFileHeaders(filePath, size) {
+  const fileName = basename(filePath).replace(/["\\\r\n]/g, "_") || "file";
+  return {
+    "content-type": "text/plain; charset=utf-8",
+    "content-disposition": `inline; filename="${fileName}"`,
+    "content-length": String(size),
+    "content-security-policy": "default-src 'none'; sandbox",
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  };
+}
+
+async function sendLocalFile(response, file) {
+  let contents;
+  try {
+    contents = await readFile(file.path);
+  } catch {
+    throw new LocalFileRequestError(403, "Local file cannot be read");
+  }
+  response.writeHead(200, localFileHeaders(file.path, contents.byteLength));
+  response.end(contents);
+}
+
+function localFileViewerLocation(requestUrl, requestedPath) {
+  const viewerUrl = new URL("/file-viewer.html", requestUrl);
+  viewerUrl.searchParams.set("path", requestedPath);
+  return `${viewerUrl.pathname}${viewerUrl.search}`;
+}
+
+function redirectToLocalFileViewer(response, requestUrl, requestedPath) {
+  response.writeHead(302, {
+    location: localFileViewerLocation(requestUrl, requestedPath),
+    "content-security-policy": CONTENT_SECURITY_POLICY,
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  });
+  response.end();
+}
+
+function sendLocalFileError(response, error) {
+  if (!(error instanceof LocalFileRequestError)) {
+    return false;
+  }
+  sendJson(response, error.status, { error: error.message });
+  return true;
+}
 
 function sendJson(response, status, value) {
   response.writeHead(status, {
@@ -117,6 +254,18 @@ export async function createNavigatorServer({
 
     try {
       if (requestUrl.pathname.startsWith("/api/")) {
+        if (requestUrl.pathname === "/api/local-file") {
+          try {
+            const file = await resolveLocalFile(cwd, requestUrl.searchParams.get("path"));
+            await sendLocalFile(response, file);
+          } catch (error) {
+            if (!sendLocalFileError(response, error)) {
+              throw error;
+            }
+          }
+          return;
+        }
+
         if (requestUrl.pathname === "/api/threads") {
           const source = requestUrl.searchParams.get("source") ?? "all";
           const sourceKinds = SOURCE_FILTERS.get(source);
@@ -151,6 +300,29 @@ export async function createNavigatorServer({
 
       const staticFile = STATIC_FILES.get(requestUrl.pathname);
       if (!staticFile) {
+        // Absolute Codex file links land here; serve only files below --cwd.
+        let requestedPath;
+        try {
+          requestedPath = decodeURIComponent(requestUrl.pathname);
+        } catch {
+          response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+          response.end("Not found");
+          return;
+        }
+        const launchPath = resolve(cwd);
+        if (requestedPath === launchPath
+            || requestedPath.startsWith(`${launchPath}${sep}`)) {
+          try {
+            await resolveLocalFile(cwd, requestedPath);
+            redirectToLocalFileViewer(response, requestUrl, requestedPath);
+          } catch (error) {
+            if (!sendLocalFileError(response, error)) {
+              throw error;
+            }
+          }
+          return;
+        }
+
         response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
         response.end("Not found");
         return;

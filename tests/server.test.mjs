@@ -38,6 +38,9 @@ async function createWebRoot(t) {
     writeFile(join(directory, "app.js"), "console.log('navigator')"),
     writeFile(join(directory, "style.css"), "body{}"),
     writeFile(join(directory, "markdown.js"), "export function renderMarkdown() {}"),
+    writeFile(join(directory, "file-viewer.html"), "<html>viewer</html>"),
+    writeFile(join(directory, "file-viewer.js"), "console.log('viewer')"),
+    writeFile(join(directory, "file-viewer.css"), "body{}"),
     writeFile(join(vendorDirectory, "marked.esm.js"), "export const marked = {};"),
     writeFile(join(vendorDirectory, "purify.es.mjs"), "export default () => ({});"),
     writeFile(join(vendorDirectory, "highlight.min.js"), "export default {};"),
@@ -109,7 +112,13 @@ test("serves static assets and thread APIs without authentication", async (t) =>
   assert.match(markdown.headers.get("content-type"), /^text\/javascript/);
   assert.equal(markdown.headers.get("referrer-policy"), "no-referrer");
 
-  for (const path of ["/app.js", "/style.css"]) {
+  for (const path of [
+    "/app.js",
+    "/style.css",
+    "/file-viewer.html",
+    "/file-viewer.js",
+    "/file-viewer.css",
+  ]) {
     const asset = await fetch(apiUrl(navigator.url, path));
     assert.equal(asset.status, 200);
     assert.equal(asset.headers.get("referrer-policy"), "no-referrer");
@@ -189,6 +198,59 @@ test("returns App Server errors without exposing a stack", async (t) => {
   const response = await fetch(apiUrl(navigator.url, "/api/threads/thread-1"));
   assert.equal(response.status, 500);
   assert.deepEqual(await response.json(), { error: "read failed" });
+});
+
+test("serves local file links only from the launch directory", async (t) => {
+  const webRoot = await createWebRoot(t);
+  const workspace = await mkdtemp(join(tmpdir(), "conversation-navigator-workspace-"));
+  const outside = await mkdtemp(join(tmpdir(), "conversation-navigator-outside-"));
+  const localFile = join(workspace, "src.js");
+  const outsideFile = join(outside, "secret.txt");
+  await Promise.all([
+    writeFile(localFile, "const first = 1;\nconst second = 2;\n"),
+    writeFile(outsideFile, "outside\n"),
+  ]);
+  t.after(async () => {
+    await Promise.all([
+      rm(workspace, { recursive: true, force: true }),
+      rm(outside, { recursive: true, force: true }),
+    ]);
+  });
+
+  const navigator = await createNavigatorServer({
+    client: createFakeClient(),
+    cwd: workspace,
+    webRoot,
+    idleMs: 0,
+    openUrl: false,
+  });
+  t.after(() => navigator.close());
+
+  const endpoint = await fetch(apiUrl(
+    navigator.url,
+    `/api/local-file?path=${encodeURIComponent(`${localFile}:2`)}`,
+  ));
+  assert.equal(endpoint.status, 200);
+  assert.match(endpoint.headers.get("content-type"), /^text\/plain/);
+  assert.match(endpoint.headers.get("content-security-policy"), /default-src 'none'/);
+  assert.equal(await endpoint.text(), "const first = 1;\nconst second = 2;\n");
+
+  const absoluteLink = await fetch(apiUrl(navigator.url, `${localFile}:1`), {
+    redirect: "manual",
+  });
+  assert.equal(absoluteLink.status, 302);
+  const viewerLocation = new URL(absoluteLink.headers.get("location"), navigator.url);
+  assert.equal(viewerLocation.pathname, "/file-viewer.html");
+  assert.equal(viewerLocation.searchParams.get("path"), `${localFile}:1`);
+
+  const outsideResponse = await fetch(apiUrl(
+    navigator.url,
+    `/api/local-file?path=${encodeURIComponent(outsideFile)}`,
+  ));
+  assert.equal(outsideResponse.status, 403);
+  assert.deepEqual(await outsideResponse.json(), {
+    error: "Local file is outside the launch directory",
+  });
 });
 
 test("close is idempotent and stops App Server once", async (t) => {

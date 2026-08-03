@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Code Viewer</title>
+    <link rel="stylesheet" href="/file-viewer.css">
+  </head>
+  <body>
+    <header class="file-toolbar">
+      <a class="back-link" href="/">Conversation Navigator</a>
+      <div class="file-heading">
+        <h1 id="file-name">Code Viewer</h1>
+        <p id="file-meta">Loading…</p>
+        <p id="file-path" class="file-path" title=""></p>
+      </div>
+      <button id="copy-file" type="button" disabled>Copy</button>
+    </header>
+
+    <main class="file-page">
+      <div id="file-status" class="file-status" role="status" aria-live="polite">Loading file…</div>
+      <div id="code-scroll" class="code-scroll" hidden>
+        <div id="line-numbers" class="code-gutter" aria-hidden="true"></div>
+        <pre id="code-content" class="code-content"><code id="source-code"></code><span id="line-focus" class="line-focus" hidden></span></pre>
+      </div>
+    </main>
+
+    <script type="module" src="/file-viewer.js"></script>
+  </body>
+</html>

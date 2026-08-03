@@ -10,10 +10,13 @@ const webRoot = new URL(
 );
 
 test("web assets expose the navigation interface safely", async () => {
-  const [html, app, css] = await Promise.all([
+  const [html, app, css, viewerHtml, viewer, viewerCss] = await Promise.all([
     readFile(new URL("index.html", webRoot), "utf8"),
     readFile(new URL("app.js", webRoot), "utf8"),
     readFile(new URL("style.css", webRoot), "utf8"),
+    readFile(new URL("file-viewer.html", webRoot), "utf8"),
+    readFile(new URL("file-viewer.js", webRoot), "utf8"),
+    readFile(new URL("file-viewer.css", webRoot), "utf8"),
   ]);
 
   assert.match(html, /id="thread-select"/);
@@ -77,6 +80,25 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text img/);
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
+  assert.match(viewerHtml, /<title>Code Viewer<\/title>/);
+  assert.match(viewerHtml, /id="file-path" class="file-path"/);
+  assert.match(viewerHtml, /id="line-numbers"/);
+  assert.match(viewerHtml, /id="source-code"/);
+  assert.match(viewerHtml, /src="\/file-viewer\.js"/);
+  assert.match(viewer, /detectLanguage/);
+  assert.match(viewer, /installKeyboardShortcuts/);
+  assert.match(viewer, /isTopbarToggleShortcut/);
+  assert.match(viewer, /\["\.py", "python"\]/);
+  assert.match(viewer, /\["\.rs", "rust"\]/);
+  assert.match(viewer, /\["\.java", "java"\]/);
+  assert.match(viewer, /\["\.json", "json"\]/);
+  assert.doesNotMatch(viewer, /\.innerHTML\s*=/);
+  assert.doesNotMatch(viewer, /\.outerHTML\s*=/);
+  assert.match(viewerCss, /\.code-gutter/);
+  assert.match(viewerCss, /\.line-focus/);
+  assert.match(viewerCss, /\.file-path/);
+  assert.match(viewerCss, /body\.topbar-hidden \.file-toolbar/);
+  assert.match(viewerCss, /body\.topbar-hidden \.file-page/);
   assert.match(
     css,
     /\.message-text th\[align="left"\],[\s\S]*?\.message-text td\[align="left"\][\s\S]*?text-align:\s*left/,
