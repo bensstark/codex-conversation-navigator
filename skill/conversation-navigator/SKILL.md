@@ -27,6 +27,7 @@ Use `--no-open` only when automatic browser opening is unwanted.
 - Filter to VS Code and Codex CLI threads whose stored working directory exactly matches the launch directory.
 - Let the user filter the thread list between all sources, VS Code, and Codex CLI.
 - Show the exact launch working directory in the status bar.
+- Proxy local file links through a read-only preview endpoint limited to regular files below the exact launch directory; display previews as plain text.
 - Explain an empty result in terms of that exact-directory filter and suggest relaunching with the appropriate `--cwd` value.
 - Warn that the server has no access control, so any process on the same machine can read its conversation API while it is running.
 - Do not claim this can scroll or alter the official Codex panel. Clicking a user message navigates within the companion page.

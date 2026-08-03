@@ -70,7 +70,7 @@ Keep approved safe HTML formatting elements such as `div`, `span`, text-formatti
 
 After sanitization:
 
-- Accept link destinations only when they resolve to `http:`, `https:`, `mailto:`, a relative URL, or a same-document fragment. Remove other `href` values.
+- Accept link destinations only when they resolve to `http:`, `https:`, `mailto:`, a relative URL, or a same-document fragment. Convert `file:` links to the read-only local-file endpoint; remove other `href` values.
 - Set every surviving link to `target="_blank"`, `rel="noopener noreferrer"`, and `referrerpolicy="no-referrer"`.
 - Accept image sources only for `http:`, `https:`, or raster `data:image/` media types. Remove other `src` values, including SVG data images.
 - Remove `width` and `height` from every non-image element. On images, keep each dimension only when its raw value is a canonical positive integer from 1 through 10000 inclusive.

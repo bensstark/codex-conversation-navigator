@@ -8,6 +8,7 @@
 
 - 只显示用户消息和 Codex 的最终回答，不显示思考过程
 - 支持 Markdown 和代码语法高亮
+- 支持打开 `file://` 和 Codex 常见的 `/绝对路径/file.py:行号` 本地文件链接
 - 代码块提供一键复制按钮
 - 同时显示 VS Code 与 Codex CLI 对话，并可按来源筛选
 - 在状态信息栏显示当前工作目录（CWD）
@@ -32,6 +33,8 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 
 服务运行期间，本机其他进程也能读取对话 API。
 
+本地文件链接会通过只读预览接口打开；出于安全边界，只允许读取 `--cwd` 目录内的普通文件，单个文件最大 4 MiB，并按纯文本显示。
+
 ### 安装为 Codex Skill
 
 ```bash
@@ -55,6 +58,7 @@ Key features:
 
 - Shows user messages and final Codex answers without reasoning traces
 - Renders Markdown with syntax-highlighted code
+- Opens `file://` URLs and Codex-style `/absolute/path/file.py:line` local file links
 - Provides one-click copy buttons for code blocks
 - Shows both VS Code and Codex CLI conversations with a source filter
 - Shows the current working directory (CWD) in the status bar
@@ -78,6 +82,8 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 The browser normally opens automatically. The page only shows VS Code and Codex CLI conversations whose working directory exactly matches `--cwd`.
 
 Other processes on the same machine can read the conversation API while the server is running.
+
+Local file links use a read-only preview endpoint. For safety, it only serves regular files below `--cwd`, limits previews to 4 MiB per file, and displays them as plain text.
 
 ### Install as a Codex Skill
 
