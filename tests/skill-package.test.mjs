@@ -24,6 +24,7 @@ test("skill package includes its declared entrypoint and web assets", async () =
     access(new URL("assets/web/app.js", skillRoot)),
     access(new URL("assets/web/style.css", skillRoot)),
     access(new URL("assets/web/markdown.js", skillRoot)),
+    access(new URL("assets/web/theme.js", skillRoot)),
     access(new URL("assets/web/file-viewer.html", skillRoot)),
     access(new URL("assets/web/file-viewer.js", skillRoot)),
     access(new URL("assets/web/file-viewer.css", skillRoot)),

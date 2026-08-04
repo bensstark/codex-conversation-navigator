@@ -38,6 +38,7 @@ async function createWebRoot(t) {
     writeFile(join(directory, "app.js"), "console.log('navigator')"),
     writeFile(join(directory, "style.css"), "body{}"),
     writeFile(join(directory, "markdown.js"), "export function renderMarkdown() {}"),
+    writeFile(join(directory, "theme.js"), "export function initializeCodeTheme() {}"),
     writeFile(join(directory, "file-viewer.html"), "<html>viewer</html>"),
     writeFile(join(directory, "file-viewer.js"), "console.log('viewer')"),
     writeFile(join(directory, "file-viewer.css"), "body{}"),
@@ -118,6 +119,7 @@ test("serves static assets and thread APIs without authentication", async (t) =>
     "/file-viewer.html",
     "/file-viewer.js",
     "/file-viewer.css",
+    "/theme.js",
   ]) {
     const asset = await fetch(apiUrl(navigator.url, path));
     assert.equal(asset.status, 200);

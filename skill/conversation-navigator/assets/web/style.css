@@ -10,6 +10,21 @@
   --accent-soft: rgba(184, 79, 47, 0.12);
   --assistant: #e9e5da;
   --shadow: 0 18px 45px rgba(48, 39, 24, 0.09);
+  --code-background: rgba(20, 20, 17, 0.9);
+  --code-border: rgba(244, 240, 231, 0.2);
+  --code-text: #f4f0e7;
+  --code-button-border: rgba(244, 240, 231, 0.24);
+  --code-button-background: rgba(20, 20, 17, 0.82);
+  --code-button-hover: rgba(66, 64, 58, 0.95);
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --code-title: #d2a8ff;
+  --code-built-in: #79c0ff;
+  --code-variable: #ffa657;
+  --code-comment: #8b949e;
+  --code-meta: #7ee787;
+  --code-addition: #aff5b4;
+  --code-deletion: #ffdcd7;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -29,6 +44,26 @@ body {
   background:
     radial-gradient(circle at 15% 0%, rgba(209, 157, 89, 0.2), transparent 32rem),
     var(--background);
+}
+
+/* The normal conversation page keeps its own chrome unchanged and scopes the
+   selected theme to rendered code blocks through these variables. */
+body[data-code-theme="light"] {
+  --code-background: #f6f8fa;
+  --code-border: rgba(37, 36, 31, 0.18);
+  --code-text: #24292f;
+  --code-button-border: rgba(37, 36, 31, 0.2);
+  --code-button-background: rgba(255, 255, 255, 0.82);
+  --code-button-hover: rgba(255, 255, 255, 0.98);
+  --code-keyword: #cf222e;
+  --code-string: #0a3069;
+  --code-title: #8250df;
+  --code-built-in: #0550ae;
+  --code-variable: #953800;
+  --code-comment: #6e7781;
+  --code-meta: #116329;
+  --code-addition: #116329;
+  --code-deletion: #cf222e;
 }
 
 button,
@@ -79,6 +114,20 @@ h1 {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.theme-toggle {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--panel-strong);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
 }
 
 .source-picker,
@@ -334,10 +383,10 @@ body.topbar-hidden main {
 .message-text pre {
   overflow-x: auto;
   padding: 14px 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--code-border);
   border-radius: 10px;
-  background: rgba(20, 20, 17, 0.9);
-  color: #f4f0e7;
+  background: var(--code-background);
+  color: var(--code-text);
 }
 
 .message-text .code-block {
@@ -357,10 +406,10 @@ body.topbar-hidden main {
   min-width: 30px;
   height: 30px;
   padding: 5px 8px;
-  border: 1px solid rgba(244, 240, 231, 0.24);
+  border: 1px solid var(--code-button-border);
   border-radius: 6px;
-  color: #f4f0e7;
-  background: rgba(20, 20, 17, 0.82);
+  color: var(--code-text);
+  background: var(--code-button-background);
   font: 0.72rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
 }
@@ -377,7 +426,7 @@ body.topbar-hidden main {
 }
 
 .message-text .code-copy-button:hover {
-  background: rgba(66, 64, 58, 0.95);
+  background: var(--code-button-hover);
 }
 
 .message-text .code-copy-button:focus-visible {
@@ -395,7 +444,7 @@ body.topbar-hidden main {
 }
 
 .message-text pre .hljs {
-  color: #e6edf3;
+  color: var(--code-text);
 }
 
 .message-text .hljs-keyword,
@@ -403,14 +452,14 @@ body.topbar-hidden main {
 .message-text .hljs-literal,
 .message-text .hljs-section,
 .message-text .hljs-link {
-  color: #ff7b72;
+  color: var(--code-keyword);
 }
 
 .message-text .hljs-string,
 .message-text .hljs-attribute,
 .message-text .hljs-template-tag,
 .message-text .hljs-template-variable {
-  color: #a5d6ff;
+  color: var(--code-string);
 }
 
 .message-text .hljs-title,
@@ -419,38 +468,38 @@ body.topbar-hidden main {
 .message-text .hljs-number,
 .message-text .hljs-symbol,
 .message-text .hljs-bullet {
-  color: #d2a8ff;
+  color: var(--code-title);
 }
 
 .message-text .hljs-built_in,
 .message-text .hljs-selector-class,
 .message-text .hljs-selector-id {
-  color: #79c0ff;
+  color: var(--code-built-in);
 }
 
 .message-text .hljs-variable,
 .message-text .hljs-params,
 .message-text .hljs-property {
-  color: #ffa657;
+  color: var(--code-variable);
 }
 
 .message-text .hljs-comment,
 .message-text .hljs-quote {
-  color: #8b949e;
+  color: var(--code-comment);
   font-style: italic;
 }
 
 .message-text .hljs-meta,
 .message-text .hljs-doctag {
-  color: #7ee787;
+  color: var(--code-meta);
 }
 
 .message-text .hljs-addition {
-  color: #aff5b4;
+  color: var(--code-addition);
 }
 
 .message-text .hljs-deletion {
-  color: #ffdcd7;
+  color: var(--code-deletion);
 }
 
 .message-text a {

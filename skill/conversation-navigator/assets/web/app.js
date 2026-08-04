@@ -1,4 +1,5 @@
 import { renderMarkdown } from "./markdown.js";
+import { initializeCodeTheme } from "./theme.js";
 
 const POLL_INTERVAL_MS = 2_000;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -165,7 +166,9 @@ function bootstrap() {
     outline: document.getElementById("message-outline"),
     transcript: document.getElementById("transcript"),
     status: document.getElementById("status"),
+    themeToggle: document.getElementById("theme-toggle"),
   };
+  initializeCodeTheme(document, elements.themeToggle);
   const state = {
     source: elements.sourceSelect.value,
     cwd: "",

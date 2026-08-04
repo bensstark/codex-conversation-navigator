@@ -18,6 +18,7 @@ const STATIC_FILES = new Map([
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/style.css", ["style.css", "text/css; charset=utf-8"]],
   ["/markdown.js", ["markdown.js", "text/javascript; charset=utf-8"]],
+  ["/theme.js", ["theme.js", "text/javascript; charset=utf-8"]],
   ["/file-viewer.html", ["file-viewer.html", "text/html; charset=utf-8"]],
   ["/file-viewer.js", ["file-viewer.js", "text/javascript; charset=utf-8"]],
   ["/file-viewer.css", ["file-viewer.css", "text/css; charset=utf-8"]],

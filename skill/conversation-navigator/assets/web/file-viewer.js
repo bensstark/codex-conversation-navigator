@@ -1,5 +1,7 @@
 import createDOMPurify from "./vendor/purify.es.mjs";
 import hljs from "./vendor/highlight.min.js";
+import { renderMarkdown } from "./markdown.js";
+import { initializeCodeTheme } from "./theme.js";
 
 const MAX_HIGHLIGHT_LENGTH = 100_000;
 const SAFE_HIGHLIGHT_CLASS = /^hljs-[a-z0-9_-]+$/i;
@@ -7,6 +9,7 @@ const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 24;
 const FONT_SIZE_STEP = 1;
+const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown", ".mdown"]);
 const EDITABLE_TARGET_SELECTOR = [
   "input",
   "textarea",
@@ -152,6 +155,14 @@ function fileName(filePath) {
     .pop() || "file";
 }
 
+export function isMarkdownPath(filePath) {
+  const name = fileName(filePath).toLowerCase();
+  const extension = name.includes(".")
+    ? name.slice(name.lastIndexOf("."))
+    : "";
+  return MARKDOWN_EXTENSIONS.has(extension);
+}
+
 export function parseFileReference(value) {
   const reference = String(value ?? "").trim();
   const lineMatch = reference.match(/^(.*?):([1-9]\d*)(?::([1-9]\d*))?$/);
@@ -257,6 +268,51 @@ export function adjustCodeFontSize(document, elements, delta) {
   return setCodeFontSize(document, elements, current + delta);
 }
 
+export function setMarkdownViewMode(documentNode, elements, mode) {
+  const rendered = mode === "rendered";
+  elements.scroll.classList.toggle("markdown-rendered", rendered);
+  elements.markdown.hidden = !rendered;
+  elements.codeContent.hidden = rendered;
+  elements.gutter.hidden = rendered;
+  if (rendered) {
+    setLineFocus(documentNode, elements, null);
+  }
+
+  if (elements.viewToggle) {
+    const nextMode = rendered ? "source" : "rendered";
+    const label = rendered ? "Source" : "Rendered";
+    const description = rendered ? "Show Markdown source" : "Render Markdown";
+    elements.viewToggle.textContent = label;
+    elements.viewToggle.setAttribute("aria-label", description);
+    elements.viewToggle.title = description;
+    elements.viewToggle.dataset.viewMode = nextMode;
+  }
+  return rendered ? "rendered" : "source";
+}
+
+export function renderMarkdownViewer(documentNode, elements, source) {
+  elements.markdown.replaceChildren(renderMarkdown(documentNode, source));
+  setMarkdownViewMode(documentNode, elements, "rendered");
+  return {
+    mode: "rendered",
+    lineCount: lineInfo(source).count,
+  };
+}
+
+export function scrollToSourceLine(documentNode, elements, line) {
+  if (!line) {
+    return;
+  }
+  const lineCount = lineInfo(elements.code.textContent ?? "").count;
+  if (line > lineCount) {
+    return;
+  }
+  setLineFocus(documentNode, elements, line);
+  const computed = documentNode.defaultView?.getComputedStyle(elements.codeContent);
+  const lineHeight = Number.parseFloat(computed?.lineHeight ?? "") || 24;
+  elements.scroll.scrollTop = Math.max(0, (line - 4) * lineHeight);
+}
+
 export function renderCodeViewer(document, elements, source, {
   path = "",
   line = null,
@@ -309,9 +365,12 @@ function elementsFor(document) {
     fontDecrease: document.getElementById("font-decrease"),
     fontIncrease: document.getElementById("font-increase"),
     fontSize: document.getElementById("font-size"),
+    themeToggle: document.getElementById("theme-toggle"),
+    viewToggle: document.getElementById("view-toggle"),
     gutter: document.getElementById("line-numbers"),
     codeContent: document.getElementById("code-content"),
     code: document.getElementById("source-code"),
+    markdown: document.getElementById("markdown-content"),
     focus: document.getElementById("line-focus"),
     copy: document.getElementById("copy-file"),
   };
@@ -337,6 +396,7 @@ async function readLocalFile(reference) {
 
 async function bootstrap() {
   const elements = elementsFor(document);
+  initializeCodeTheme(document, elements.themeToggle);
   setCodeFontSize(document, elements, DEFAULT_FONT_SIZE);
   elements.fontDecrease.addEventListener("click", () => {
     adjustCodeFontSize(document, elements, -FONT_SIZE_STEP);
@@ -358,14 +418,29 @@ async function bootstrap() {
 
   try {
     const source = await readLocalFile(reference);
+    const markdownFile = isMarkdownPath(location.path);
     const result = renderCodeViewer(document, elements, source, {
       path: location.path,
       line: location.line,
     });
+    let viewMode = "source";
+    if (markdownFile) {
+      renderMarkdownViewer(document, elements, source);
+      elements.viewToggle.removeAttribute("hidden");
+      viewMode = "rendered";
+      elements.viewToggle.addEventListener("click", () => {
+        viewMode = setMarkdownViewMode(document, elements,
+          viewMode === "rendered" ? "source" : "rendered");
+        if (viewMode === "source") {
+          scrollToSourceLine(document, elements, location.line);
+        }
+      });
+    }
     const language = languageLabel(result.language);
     const lineSuffix = location.line ? ` · line ${location.line}` : "";
-    const highlightSuffix = result.highlighted ? "" : " · plain text";
-    elements.meta.textContent = `${language} · ${result.lineCount} lines${lineSuffix}${highlightSuffix}`;
+    const modeSuffix = markdownFile ? " · rendered" : "";
+    const highlightSuffix = markdownFile || result.highlighted ? "" : " · plain text";
+    elements.meta.textContent = `${language} · ${result.lineCount} lines${lineSuffix}${modeSuffix}${highlightSuffix}`;
     elements.status.textContent = "Ready";
     elements.status.setAttribute("hidden", "");
     elements.scroll.removeAttribute("hidden");
@@ -379,10 +454,8 @@ async function bootstrap() {
       }
     });
 
-    if (location.line) {
-      const computed = document.defaultView?.getComputedStyle(elements.codeContent);
-      const lineHeight = Number.parseFloat(computed?.lineHeight ?? "") || 24;
-      elements.scroll.scrollTop = Math.max(0, (location.line - 4) * lineHeight);
+    if (location.line && !markdownFile) {
+      scrollToSourceLine(document, elements, location.line);
     }
   } catch (error) {
     elements.status.removeAttribute("hidden");

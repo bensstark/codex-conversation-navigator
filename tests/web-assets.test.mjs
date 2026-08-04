@@ -10,13 +10,14 @@ const webRoot = new URL(
 );
 
 test("web assets expose the navigation interface safely", async () => {
-  const [html, app, css, viewerHtml, viewer, viewerCss] = await Promise.all([
+  const [html, app, css, viewerHtml, viewer, viewerCss, theme] = await Promise.all([
     readFile(new URL("index.html", webRoot), "utf8"),
     readFile(new URL("app.js", webRoot), "utf8"),
     readFile(new URL("style.css", webRoot), "utf8"),
     readFile(new URL("file-viewer.html", webRoot), "utf8"),
     readFile(new URL("file-viewer.js", webRoot), "utf8"),
     readFile(new URL("file-viewer.css", webRoot), "utf8"),
+    readFile(new URL("theme.js", webRoot), "utf8"),
   ]);
 
   assert.match(html, /id="thread-select"/);
@@ -26,6 +27,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(html, /<option value="cli">Codex CLI<\/option>/);
   assert.match(html, /<title>Codex Companion<\/title>/);
   assert.match(html, /<h1>Codex Companion<\/h1>/);
+  assert.match(html, /<body data-code-theme="dark">/);
+  assert.match(html, /id="theme-toggle"/);
   assert.match(html, /id="message-search"/);
   assert.match(html, /id="message-outline"/);
   assert.match(html, /id="transcript"/);
@@ -36,6 +39,8 @@ test("web assets expose the navigation interface safely", async () => {
   );
   assert.doesNotMatch(html, /id="sidebar-toggle"/);
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
+  assert.match(app, /import \{ initializeCodeTheme \} from "\.\/theme\.js"/);
+  assert.match(app, /initializeCodeTheme\(document, elements\.themeToggle\)/);
   assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
   assert.match(app, /addCodeCopyButtons\(document, body\)/);
   assert.doesNotMatch(app, /createElement\("div", "message-text", message\.text\)/);
@@ -81,15 +86,23 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
   assert.match(viewerHtml, /<title>Code Viewer<\/title>/);
-  assert.match(viewerHtml, /<body class="topbar-hidden">/);
+  assert.match(viewerHtml, /<body class="topbar-hidden" data-code-theme="dark">/);
   assert.match(viewerHtml, /id="file-path" class="file-path"/);
+  assert.match(viewerHtml, /id="theme-toggle"/);
+  assert.match(viewerHtml, /id="view-toggle"/);
   assert.match(viewerHtml, /id="font-decrease"/);
   assert.match(viewerHtml, /id="font-increase"/);
   assert.match(viewerHtml, /id="font-size"[^>]*>16px<\/span>/);
   assert.match(viewerHtml, /id="line-numbers"/);
   assert.match(viewerHtml, /id="source-code"/);
+  assert.match(viewerHtml, /id="markdown-content" class="markdown-content"/);
   assert.match(viewerHtml, /src="\/file-viewer\.js"/);
   assert.match(viewer, /detectLanguage/);
+  assert.match(viewer, /isMarkdownPath/);
+  assert.match(viewer, /renderMarkdownViewer/);
+  assert.match(viewer, /setMarkdownViewMode/);
+  assert.match(viewer, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
+  assert.match(viewer, /import \{ initializeCodeTheme \} from "\.\/theme\.js"/);
   assert.match(viewer, /setCodeFontSize/);
   assert.match(viewer, /adjustCodeFontSize/);
   assert.match(viewer, /installKeyboardShortcuts/);
@@ -102,6 +115,9 @@ test("web assets expose the navigation interface safely", async () => {
   assert.doesNotMatch(viewer, /\.outerHTML\s*=/);
   assert.match(viewerCss, /\.code-gutter/);
   assert.match(viewerCss, /\.line-focus/);
+  assert.match(viewerCss, /\.markdown-content/);
+  assert.match(viewerCss, /\.code-scroll\.markdown-rendered/);
+  assert.match(viewerCss, /body\[data-code-theme="light"\]/);
   assert.match(viewerCss, /\.file-path/);
   assert.match(viewerCss, /\.font-controls/);
   assert.match(viewerCss, /--code-font-size/);
@@ -109,6 +125,8 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(viewerCss, /\.code-gutter,\s*\.code-content \{[\s\S]*?font-family:\s*ui-monospace, SFMono-Regular, Menlo, Consolas, monospace/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-toolbar/);
   assert.match(viewerCss, /body\.topbar-hidden \.file-page/);
+  assert.match(theme, /initializeCodeTheme/);
+  assert.match(theme, /conversation-navigator-code-theme/);
   assert.match(
     css,
     /\.message-text th\[align="left"\],[\s\S]*?\.message-text td\[align="left"\][\s\S]*?text-align:\s*left/,

@@ -9,10 +9,14 @@ import {
   clampFontSize,
   installKeyboardShortcuts,
   isTopbarToggleShortcut,
+  isMarkdownPath,
   languageLabel,
   parseFileReference,
+  renderMarkdownViewer,
   renderCodeViewer,
+  scrollToSourceLine,
   setCodeFontSize,
+  setMarkdownViewMode,
   toggleTopbar,
 } from "../skill/conversation-navigator/assets/web/file-viewer.js";
 
@@ -22,8 +26,11 @@ function createViewerDom() {
       <button id="font-decrease"></button>
       <button id="font-increase"></button>
       <span id="font-size"></span>
+      <button id="theme-toggle"></button>
+      <button id="view-toggle"></button>
       <div id="line-numbers"></div>
       <pre id="code-content"><code id="source-code"></code><span id="line-focus" hidden></span></pre>
+      <article id="markdown-content" hidden></article>
     </div>
   </body>`);
   const { document } = dom.window;
@@ -35,9 +42,12 @@ function createViewerDom() {
       fontDecrease: document.getElementById("font-decrease"),
       fontIncrease: document.getElementById("font-increase"),
       fontSize: document.getElementById("font-size"),
+      themeToggle: document.getElementById("theme-toggle"),
+      viewToggle: document.getElementById("view-toggle"),
       gutter: document.getElementById("line-numbers"),
       codeContent: document.getElementById("code-content"),
       code: document.getElementById("source-code"),
+      markdown: document.getElementById("markdown-content"),
       focus: document.getElementById("line-focus"),
     },
   };
@@ -83,6 +93,37 @@ test("detectLanguage supports common source and data file extensions", () => {
     assert.notEqual(languageLabel(language), "Plain text");
   }
   assert.equal(detectLanguage("notes.txt"), null);
+});
+
+test("markdown paths use the rendered document mode", () => {
+  assert.equal(isMarkdownPath("README.md"), true);
+  assert.equal(isMarkdownPath("docs/guide.MARKDOWN"), true);
+  assert.equal(isMarkdownPath("notes.txt"), false);
+
+  const { document, elements } = createViewerDom();
+  const source = "# Guide\n\n```python\nprint(1)\n```";
+  renderCodeViewer(document, elements, source, {
+    path: "README.md",
+    line: 2,
+  });
+  const result = renderMarkdownViewer(document, elements, source);
+
+  assert.equal(result.mode, "rendered");
+  assert.equal(elements.markdown.hidden, false);
+  assert.equal(elements.markdown.querySelector("h1")?.textContent, "Guide");
+  assert.equal(elements.codeContent.hidden, true);
+  assert.equal(elements.gutter.hidden, true);
+  assert.equal(elements.scroll.classList.contains("markdown-rendered"), true);
+  assert.equal(elements.viewToggle.textContent, "Source");
+
+  assert.equal(setMarkdownViewMode(document, elements, "source"), "source");
+  assert.equal(elements.markdown.hidden, true);
+  assert.equal(elements.codeContent.hidden, false);
+  assert.equal(elements.gutter.hidden, false);
+  assert.equal(elements.viewToggle.textContent, "Rendered");
+  scrollToSourceLine(document, elements, 2);
+  assert.equal(elements.focus.hasAttribute("hidden"), false);
+  assert.equal(elements.focus.dataset.line, "2");
 });
 
 test("renderCodeViewer adds safe highlighting, line numbers, and line focus", () => {

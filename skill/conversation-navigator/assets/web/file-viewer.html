@@ -6,7 +6,7 @@
     <title>Code Viewer</title>
     <link rel="stylesheet" href="/file-viewer.css">
   </head>
-  <body class="topbar-hidden">
+  <body class="topbar-hidden" data-code-theme="dark">
     <header class="file-toolbar">
       <a class="back-link" href="/">Conversation Navigator</a>
       <div class="file-heading">
@@ -15,6 +15,8 @@
         <p id="file-path" class="file-path" title=""></p>
       </div>
       <div class="file-actions">
+        <button id="theme-toggle" class="toolbar-button" type="button" aria-label="Switch to light theme" title="Switch to light theme">Light</button>
+        <button id="view-toggle" class="toolbar-button" type="button" aria-label="Show Markdown source" title="Show Markdown source" hidden>Source</button>
         <div class="font-controls" role="group" aria-label="Code font size">
           <button id="font-decrease" class="font-control" type="button" aria-label="Decrease code font size" title="Decrease code font size">A−</button>
           <span id="font-size" class="font-size-value" aria-live="polite">16px</span>
@@ -29,6 +31,7 @@
       <div id="code-scroll" class="code-scroll" hidden>
         <div id="line-numbers" class="code-gutter" aria-hidden="true"></div>
         <pre id="code-content" class="code-content"><code id="source-code"></code><span id="line-focus" class="line-focus" hidden></span></pre>
+        <article id="markdown-content" class="markdown-content" hidden></article>
       </div>
     </main>
 
