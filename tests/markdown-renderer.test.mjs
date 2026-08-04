@@ -253,16 +253,30 @@ test("renderMarkdown hardens links, images, and task checkboxes", () => {
 });
 
 test("renderMarkdown proxies local file URLs through the read-only endpoint", () => {
-  const { container } = render(`[file](file:///home/hzy/claw/src/app.py:12)
+  const { container } = render(`[model.py](file:///home/hzy/claw/src/app.py:12)
+[plain.py](file:///home/hzy/claw/src/plain.py)
 [remote-file](file://other-host/home/hzy/claw/src/app.py)`);
   const links = [...container.querySelectorAll("a")];
   const endpoint = new URL(links[0].getAttribute("href"), "http://127.0.0.1/");
 
   assert.equal(endpoint.pathname, "/file-viewer.html");
   assert.equal(endpoint.searchParams.get("path"), "/home/hzy/claw/src/app.py:12");
+  assert.equal(links[0].textContent, "model.py (line 12)");
+  assert.equal(links[1].textContent, "plain.py");
   assert.equal(links[0].getAttribute("target"), "_blank");
   assert.equal(links[0].getAttribute("rel"), "noopener noreferrer");
-  assert.equal(links[1].hasAttribute("href"), false);
+  assert.equal(links[2].hasAttribute("href"), false);
+});
+
+test("renderMarkdown labels same-origin absolute file links with their line", () => {
+  const { container } = render(
+    "[model.py](/home/hzy/claw/src/model.py:22)\n[README.md](/home/hzy/claw/README.md)",
+  );
+  const links = [...container.querySelectorAll("a")];
+
+  assert.equal(links[0].textContent, "model.py (line 22)");
+  assert.equal(links[0].getAttribute("href"), "/home/hzy/claw/src/model.py:22");
+  assert.equal(links[1].textContent, "README.md");
 });
 
 test("renderMarkdown keeps disclosures but removes other interactive controls", () => {

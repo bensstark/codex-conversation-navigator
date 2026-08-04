@@ -51,7 +51,7 @@ function isFileLink(document, value) {
   }
 }
 
-function localFileEndpoint(document, value) {
+function localFilePath(document, value) {
   let url;
   try {
     url = new URL(value.trim(), document.baseURI);
@@ -76,9 +76,56 @@ function localFileEndpoint(document, value) {
     path = path.slice(1);
   }
 
+  return path;
+}
+
+function localFileEndpoint(document, value) {
+  const path = localFilePath(document, value);
+  if (!path) {
+    return null;
+  }
+
   const endpoint = new URL("/file-viewer.html", document.baseURI);
   endpoint.searchParams.set("path", path);
   return endpoint.href;
+}
+
+function lineFromPath(path) {
+  const lineMatch = path?.match(/^(.*?):([1-9]\d*)(?::[1-9]\d*)?$/);
+  return lineMatch?.[1] ? Number(lineMatch[2]) : null;
+}
+
+function localFileLine(document, value) {
+  const filePath = localFilePath(document, value);
+  if (filePath) {
+    return lineFromPath(filePath);
+  }
+
+  let url;
+  try {
+    url = new URL(value.trim(), document.baseURI);
+  } catch {
+    return null;
+  }
+  if (url.origin !== new URL(document.baseURI).origin || !url.pathname.startsWith("/")) {
+    return null;
+  }
+  try {
+    return lineFromPath(decodeURIComponent(url.pathname));
+  } catch {
+    return null;
+  }
+}
+
+function appendFileLineLabel(link, line) {
+  if (!line) {
+    return;
+  }
+  const label = link.textContent?.trim() ?? "";
+  if (!label || /\(line\s+[1-9]\d*\)$/i.test(label)) {
+    return;
+  }
+  link.textContent = `${label} (line ${line})`;
 }
 
 function hasAllowedImage(document, value) {
@@ -124,15 +171,18 @@ function hardenFragment(document, fragment) {
     const href = link.getAttribute("href");
     if (href !== null && !hasAllowedLink(document, href)) {
       link.removeAttribute("href");
-    } else if (href !== null && isFileLink(document, href)) {
-      // Browsers cannot reliably open Linux/WSL file URLs, so open the local
-      // read-only code viewer. The viewer fetches the constrained file endpoint.
-      const endpoint = localFileEndpoint(document, href);
-      if (endpoint) {
-        link.setAttribute("href", endpoint);
-      } else {
-        link.removeAttribute("href");
+    } else if (href !== null) {
+      if (isFileLink(document, href)) {
+        // Browsers cannot reliably open Linux/WSL file URLs, so open the local
+        // read-only code viewer. The viewer fetches the constrained file endpoint.
+        const endpoint = localFileEndpoint(document, href);
+        if (endpoint) {
+          link.setAttribute("href", endpoint);
+        } else {
+          link.removeAttribute("href");
+        }
       }
+      appendFileLineLabel(link, localFileLine(document, href));
     }
     link.setAttribute("target", "_blank");
     link.setAttribute("rel", "noopener noreferrer");
