@@ -13,15 +13,19 @@ function storageOrNull(storage) {
   }
 }
 
-export function normalizeCodeTheme(value) {
-  return CODE_THEMES.has(value) ? value : DEFAULT_CODE_THEME;
+export function normalizeCodeTheme(value, fallback = DEFAULT_CODE_THEME) {
+  const fallbackTheme = CODE_THEMES.has(fallback) ? fallback : DEFAULT_CODE_THEME;
+  return CODE_THEMES.has(value) ? value : fallbackTheme;
 }
 
-export function readCodeTheme(storage) {
+export function readCodeTheme(storage, fallback = DEFAULT_CODE_THEME) {
   try {
-    return normalizeCodeTheme(storageOrNull(storage)?.getItem(THEME_STORAGE_KEY));
+    return normalizeCodeTheme(
+      storageOrNull(storage)?.getItem(THEME_STORAGE_KEY),
+      fallback,
+    );
   } catch {
-    return DEFAULT_CODE_THEME;
+    return normalizeCodeTheme(null, fallback);
   }
 }
 
@@ -52,8 +56,8 @@ export function updateThemeToggle(button, theme) {
   button.dataset.themeTarget = nextTheme;
 }
 
-export function initializeCodeTheme(documentNode, button, storage) {
-  let theme = setCodeTheme(documentNode, readCodeTheme(storage));
+export function initializeCodeTheme(documentNode, button, storage, fallback = DEFAULT_CODE_THEME) {
+  let theme = setCodeTheme(documentNode, readCodeTheme(storage, fallback));
   updateThemeToggle(button, theme);
   button?.addEventListener("click", () => {
     theme = setCodeTheme(documentNode, theme === "dark" ? "light" : "dark");

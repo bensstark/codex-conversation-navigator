@@ -396,7 +396,7 @@ async function readLocalFile(reference) {
 
 async function bootstrap() {
   const elements = elementsFor(document);
-  initializeCodeTheme(document, elements.themeToggle);
+  initializeCodeTheme(document, elements.themeToggle, undefined, "light");
   setCodeFontSize(document, elements, DEFAULT_FONT_SIZE);
   elements.fontDecrease.addEventListener("click", () => {
     adjustCodeFontSize(document, elements, -FONT_SIZE_STEP);

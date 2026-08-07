@@ -26,6 +26,8 @@ function createStorage(initial = null) {
 
 test("code theme defaults safely and persists the toggle", () => {
   assert.equal(normalizeCodeTheme("unknown"), "dark");
+  assert.equal(normalizeCodeTheme("unknown", "light"), "light");
+  assert.equal(readCodeTheme(createStorage(), "light"), "light");
   assert.equal(readCodeTheme(createStorage("light")), "light");
 
   const dom = new JSDOM(
@@ -43,6 +45,19 @@ test("code theme defaults safely and persists the toggle", () => {
   button.click();
   assert.equal(dom.window.document.body.dataset.codeTheme, "light");
   assert.equal(storage.value, "light");
+  assert.equal(button.textContent, "Dark");
+  assert.equal(button.getAttribute("aria-label"), "Switch to dark theme");
+});
+
+test("code viewer can use light as its page default", () => {
+  const dom = new JSDOM(
+    '<!doctype html><body data-code-theme="light"><button id="theme"></button></body>',
+    { url: "http://127.0.0.1/file-viewer.html" },
+  );
+  const button = dom.window.document.getElementById("theme");
+
+  initializeCodeTheme(dom.window.document, button, createStorage(), "light");
+  assert.equal(dom.window.document.body.dataset.codeTheme, "light");
   assert.equal(button.textContent, "Dark");
   assert.equal(button.getAttribute("aria-label"), "Switch to dark theme");
 });

@@ -86,7 +86,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(css, /\.message-text blockquote/);
   assert.match(css, /\.message-text input\[type="checkbox"\]/);
   assert.match(viewerHtml, /<title>Code Viewer<\/title>/);
-  assert.match(viewerHtml, /<body class="topbar-hidden" data-code-theme="dark">/);
+  assert.match(viewerHtml, /<body class="topbar-hidden" data-code-theme="light">/);
   assert.match(viewerHtml, /id="file-path" class="file-path"/);
   assert.match(viewerHtml, /id="theme-toggle"/);
   assert.match(viewerHtml, /id="view-toggle"/);
@@ -103,6 +103,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(viewer, /setMarkdownViewMode/);
   assert.match(viewer, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
   assert.match(viewer, /import \{ initializeCodeTheme \} from "\.\/theme\.js"/);
+  assert.match(viewer, /initializeCodeTheme\(document, elements\.themeToggle, undefined, "light"\)/);
   assert.match(viewer, /setCodeFontSize/);
   assert.match(viewer, /adjustCodeFontSize/);
   assert.match(viewer, /installKeyboardShortcuts/);
