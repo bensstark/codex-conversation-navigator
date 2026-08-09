@@ -288,6 +288,25 @@ export function parseCliArgs(args, { platform = process.platform } = {}) {
   return options;
 }
 
+/**
+ * Notify a parent launcher when this process was started with Node's IPC
+ * channel. Foreground invocations do not expose `process.send`, so they keep
+ * the existing stdout and signal-handling behavior unchanged.
+ */
+export function notifyParent(message, processLike = process) {
+  if (typeof processLike?.send !== "function") {
+    return false;
+  }
+
+  try {
+    processLike.send(message);
+    return true;
+  } catch {
+    // The launcher may have already disconnected after receiving readiness.
+    return false;
+  }
+}
+
 export async function createNavigatorServer({
   client,
   cwd,
@@ -444,17 +463,25 @@ export async function createNavigatorServer({
 }
 
 async function runCli() {
-  const options = parseCliArgs(process.argv.slice(2));
-  const client = new AppServerClient();
+  let client;
   let navigator;
 
   try {
+    const options = parseCliArgs(process.argv.slice(2));
+    client = new AppServerClient();
     await client.start();
     navigator = await createNavigatorServer({ client, ...options });
+    notifyParent({
+      type: "ready",
+      url: navigator.url,
+      pid: process.pid,
+    });
     console.log(`Conversation Navigator: ${navigator.url}`);
   } catch (error) {
-    client.stop();
-    console.error(error.message);
+    client?.stop();
+    const message = error instanceof Error ? error.message : String(error);
+    notifyParent({ type: "error", message });
+    console.error(message);
     process.exitCode = 1;
     return;
   }
