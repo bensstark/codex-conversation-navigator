@@ -10,22 +10,29 @@ Open a local, read-only browser companion for Codex conversations associated wit
 ## Launch
 
 1. Resolve this skill's absolute directory from the loaded `SKILL.md` path, then assign it to `$skillDirectory` in PowerShell or `$skill_directory` on POSIX.
-2. Start the bundled server in a long-running terminal. Use the exact project directory as `--cwd`.
-
-   Native Windows PowerShell:
+2. On native Windows PowerShell, launch the detached background service with the exact project directory:
 
    ```powershell
-   node "$skillDirectory\scripts\server.mjs" --cwd "$((Get-Location).Path)"
+   node "$skillDirectory\scripts\launch.mjs" --cwd "$((Get-Location).Path)"
    ```
 
-   Linux, macOS, or WSL:
+   The launcher returns the complete URL and process ID promptly; the service continues in the background, opens the browser unless `--no-open` is supplied, and stops after 30 minutes without activity. Do not keep a long-running Windows terminal open. If the terminal wrapper prints no output, do not launch again. Read the fallback in a separate PowerShell command:
+
+   ```powershell
+   $statePath = Join-Path ([IO.Path]::GetTempPath()) 'codex-conversation-navigator\last-launch.json'
+   $state = Get-Content -Raw $statePath | ConvertFrom-Json
+   $state.status; $state.cwd; $state.url; $state.pid
+   ```
+
+   Check `status` and `cwd`, then use the recorded `url` and `pid`.
+3. On Linux, macOS, or WSL, run the server in a long-running terminal:
 
    ```bash
    node "$skill_directory/scripts/server.mjs" --cwd "$PWD"
    ```
 
-3. Keep the process running and give the user the complete `Conversation Navigator` URL printed by the command. The server normally opens that URL automatically; the printed URL is the fallback.
-4. Stop the process when the user asks, or let it stop after 30 minutes without a request.
+   Keep that terminal running and give the user the complete `Conversation Navigator` URL printed by the command. Stop it when the user asks, or let it stop after 30 minutes without a request.
+4. For startup diagnostics, run `server.mjs` directly in the foreground with the same `--cwd` value.
 
 Use `--no-open` only when automatic browser opening is unwanted.
 
@@ -41,4 +48,4 @@ If `codex` cannot be found, check `Get-Command codex` in PowerShell or `command 
 - Explain an empty result in terms of that exact-directory filter and suggest relaunching with the appropriate `--cwd` value.
 - Warn that the server has no access control, so any process on the same machine can read its conversation API while it is running.
 - Do not claim this can scroll or alter the official Codex panel. Clicking a user message navigates within the companion page.
-- Preserve the running terminal while the user is using the navigator.
+- Preserve the running POSIX/WSL terminal while the user is using the navigator; Windows uses the detached launcher instead.

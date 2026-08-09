@@ -8,6 +8,7 @@ import {
   browserInvocation,
   createNavigatorServer,
   localFileCandidates,
+  notifyParent,
   normalizeLocalFileRequest,
   parseCliArgs,
 } from "../skill/conversation-navigator/scripts/server.mjs";
@@ -348,6 +349,24 @@ test("builds safe browser invocations for Windows, WSL, and POSIX", () => {
   assert.equal(posix.command, "xdg-open");
   assert.deepEqual(posix.args, [url]);
   assert.equal(posix.options.shell, false);
+});
+
+test("notifies an IPC parent without changing foreground behavior", () => {
+  const messages = [];
+  assert.equal(
+    notifyParent({ type: "ready", url: "http://127.0.0.1:43123/", pid: 42 }, {
+      send(message) {
+        messages.push(message);
+      },
+    }),
+    true,
+  );
+  assert.deepEqual(messages, [{
+    type: "ready",
+    url: "http://127.0.0.1:43123/",
+    pid: 42,
+  }]);
+  assert.equal(notifyParent({ type: "ready" }, {}), false);
 });
 
 test("normalizes Windows URL paths and preserves line suffixes", () => {

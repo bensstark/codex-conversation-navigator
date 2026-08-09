@@ -6,10 +6,15 @@ const skillRoot = new URL("../skill/conversation-navigator/", import.meta.url);
 const packageRoot = new URL("../", import.meta.url);
 
 test("skill package documents the launch workflow without placeholders", async () => {
-  const skill = await readFile(new URL("SKILL.md", skillRoot), "utf8");
+  const skill = (await readFile(new URL("SKILL.md", skillRoot), "utf8"))
+    .replaceAll("\r\n", "\n");
 
   assert.match(skill, /^---\nname: conversation-navigator\n/m);
   assert.match(skill, /description: Use when /);
+  assert.match(skill, /scripts[\\/]launch\.mjs/);
+  assert.match(skill, /last-launch\.json/);
+  assert.match(skill, /status/);
+  assert.match(skill, /cwd/);
   assert.match(skill, /scripts\/server\.mjs/);
   assert.match(skill, /--cwd/);
   assert.doesNotMatch(skill, /--no-auth/);
@@ -18,17 +23,32 @@ test("skill package documents the launch workflow without placeholders", async (
 });
 
 test("skill package documents Windows and POSIX launch paths", async () => {
-  const skill = await readFile(new URL("SKILL.md", skillRoot), "utf8");
+  const skill = (await readFile(new URL("SKILL.md", skillRoot), "utf8"))
+    .replaceAll("\r\n", "\n");
 
   assert.match(skill, /PowerShell/);
+  assert.match(skill, /scripts[\\/]launch\.mjs/);
   assert.match(skill, /Get-Command codex/);
   assert.match(skill, /%ComSpec%/);
   assert.match(skill, /\$PWD/);
   assert.match(skill, /exact project directory/);
 });
 
+test("README documents the machine-readable Windows launch fallback", async () => {
+  const readme = (await readFile(new URL("README.md", packageRoot), "utf8"))
+    .replaceAll("\r\n", "\n");
+
+  assert.match(readme, /last-launch\.json/);
+  assert.match(readme, /不要重复启动/);
+  assert.match(readme, /do not launch again/i);
+  assert.match(readme, /status/);
+  assert.match(readme, /cwd/);
+});
+
 test("skill package includes its declared entrypoint and web assets", async () => {
   await Promise.all([
+    access(new URL("scripts/entrypoint.mjs", skillRoot)),
+    access(new URL("scripts/launch.mjs", skillRoot)),
     access(new URL("scripts/server.mjs", skillRoot)),
     access(new URL("assets/web/index.html", skillRoot)),
     access(new URL("assets/web/app.js", skillRoot)),
