@@ -9,17 +9,27 @@ Open a local, read-only browser companion for Codex conversations associated wit
 
 ## Launch
 
-1. Resolve this skill's absolute directory from the loaded `SKILL.md` path.
-2. Start the bundled server in a long-running terminal:
+1. Resolve this skill's absolute directory from the loaded `SKILL.md` path, then assign it to `$skillDirectory` in PowerShell or `$skill_directory` on POSIX.
+2. Start the bundled server in a long-running terminal. Use the exact project directory as `--cwd`.
+
+   Native Windows PowerShell:
+
+   ```powershell
+   node "$skillDirectory\scripts\server.mjs" --cwd "$((Get-Location).Path)"
+   ```
+
+   Linux, macOS, or WSL:
 
    ```bash
-   node <skill-directory>/scripts/server.mjs --cwd <current-working-directory>
+   node "$skill_directory/scripts/server.mjs" --cwd "$PWD"
    ```
 
 3. Keep the process running and give the user the complete `Conversation Navigator` URL printed by the command. The server normally opens that URL automatically; the printed URL is the fallback.
 4. Stop the process when the user asks, or let it stop after 30 minutes without a request.
 
 Use `--no-open` only when automatic browser opening is unwanted.
+
+If `codex` cannot be found, check `Get-Command codex` in PowerShell or `command -v codex` on POSIX, fix PATH, and start a new terminal. Windows starts the fixed `codex.cmd app-server` shim through `%ComSpec%`; POSIX starts `codex app-server` directly.
 
 ## Behavior and Boundaries
 

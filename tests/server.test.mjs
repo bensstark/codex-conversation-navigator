@@ -5,7 +5,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  browserInvocation,
   createNavigatorServer,
+  localFileCandidates,
+  normalizeLocalFileRequest,
   parseCliArgs,
 } from "../skill/conversation-navigator/scripts/server.mjs";
 
@@ -80,6 +83,14 @@ function createFakeClient({ readError } = {}) {
 
 function apiUrl(base, path) {
   return new URL(path, base).toString();
+}
+
+function browserLocalFilePath(filePath, platform = process.platform) {
+  if (platform !== "win32") {
+    return filePath;
+  }
+  // URL pathnames use forward slashes and a leading slash before a drive.
+  return `/${filePath.replaceAll("\\", "/")}`;
 }
 
 test("serves static assets and thread APIs without authentication", async (t) => {
@@ -237,7 +248,10 @@ test("serves local file links only from the launch directory", async (t) => {
   assert.match(endpoint.headers.get("content-security-policy"), /default-src 'none'/);
   assert.equal(await endpoint.text(), "const first = 1;\nconst second = 2;\n");
 
-  const absoluteLink = await fetch(apiUrl(navigator.url, `${localFile}:1`), {
+  const absoluteLink = await fetch(apiUrl(
+    navigator.url,
+    `${browserLocalFilePath(localFile)}:1`,
+  ), {
     redirect: "manual",
   });
   assert.equal(absoluteLink.status, 302);
@@ -288,11 +302,72 @@ test("closes after the configured idle timeout", async (t) => {
 });
 
 test("parses CLI arguments", () => {
-  assert.deepEqual(parseCliArgs(["--cwd", "/repo", "--no-open"]), {
+  assert.deepEqual(parseCliArgs(["--cwd", "/repo", "--no-open"], {
+    platform: "linux",
+  }), {
     cwd: "/repo",
     openUrl: false,
   });
-  assert.throws(() => parseCliArgs(["--cwd"]), /requires a path/);
-  assert.throws(() => parseCliArgs(["--unknown"]), /Unknown argument/);
-  assert.throws(() => parseCliArgs(["--no-auth"]), /Unknown argument/);
+  assert.deepEqual(parseCliArgs(["--cwd", "C:\\repo"], {
+    platform: "win32",
+  }), {
+    cwd: "C:\\repo",
+    openUrl: true,
+  });
+  assert.throws(() => parseCliArgs(["--cwd"], { platform: "linux" }), /requires a path/);
+  assert.throws(() => parseCliArgs(["--unknown"], { platform: "linux" }), /Unknown argument/);
+  assert.throws(() => parseCliArgs(["--no-auth"], { platform: "linux" }), /Unknown argument/);
+});
+
+test("builds safe browser invocations for Windows, WSL, and POSIX", () => {
+  const url = "http://127.0.0.1:43123/";
+  const windows = browserInvocation(url, {
+    platform: "win32",
+    env: { ComSpec: "C:\\Windows\\System32\\cmd.exe" },
+  });
+  assert.deepEqual(windows, {
+    command: "C:\\Windows\\System32\\cmd.exe",
+    args: ["/c", "start", "", url],
+    options: {
+      detached: true,
+      stdio: "ignore",
+      shell: false,
+      windowsHide: true,
+    },
+  });
+
+  const wsl = browserInvocation(url, {
+    platform: "linux",
+    env: { WSL_DISTRO_NAME: "Ubuntu" },
+  });
+  assert.equal(wsl.command, "cmd.exe");
+  assert.deepEqual(wsl.args, ["/c", "start", "", url]);
+  assert.equal(wsl.options.windowsHide, undefined);
+
+  const posix = browserInvocation(url, { platform: "linux", env: {} });
+  assert.equal(posix.command, "xdg-open");
+  assert.deepEqual(posix.args, [url]);
+  assert.equal(posix.options.shell, false);
+});
+
+test("normalizes Windows URL paths and preserves line suffixes", () => {
+  assert.equal(
+    normalizeLocalFileRequest("/C:/Users/Ada/My Project/src.py:12", "win32"),
+    "C:\\Users\\Ada\\My Project\\src.py:12",
+  );
+  assert.equal(
+    normalizeLocalFileRequest("C:/Users/Ada/My Project/src.py:12:4", "win32"),
+    "C:\\Users\\Ada\\My Project\\src.py:12:4",
+  );
+  assert.equal(
+    normalizeLocalFileRequest("/C:/Users/Ada/literal%20name.py:12", "win32"),
+    "C:\\Users\\Ada\\literal%20name.py:12",
+  );
+  assert.deepEqual(
+    localFileCandidates("C:\\Users\\Ada\\src.py:12:4"),
+    [
+      { path: "C:\\Users\\Ada\\src.py:12:4", line: null },
+      { path: "C:\\Users\\Ada\\src.py", line: 12 },
+    ],
+  );
 });

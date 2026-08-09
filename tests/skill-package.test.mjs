@@ -17,6 +17,16 @@ test("skill package documents the launch workflow without placeholders", async (
   assert.doesNotMatch(skill, /TODO/);
 });
 
+test("skill package documents Windows and POSIX launch paths", async () => {
+  const skill = await readFile(new URL("SKILL.md", skillRoot), "utf8");
+
+  assert.match(skill, /PowerShell/);
+  assert.match(skill, /Get-Command codex/);
+  assert.match(skill, /%ComSpec%/);
+  assert.match(skill, /\$PWD/);
+  assert.match(skill, /exact project directory/);
+});
+
 test("skill package includes its declared entrypoint and web assets", async () => {
   await Promise.all([
     access(new URL("scripts/server.mjs", skillRoot)),

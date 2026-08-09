@@ -23,13 +23,26 @@
 
 - Node.js 20.19 或更高版本
 - `codex` 命令已安装并可在终端中使用
+- 原生 Windows 10/11：在 PowerShell 中确认 `Get-Command codex` 能找到命令；如果找不到，请把 Codex 安装目录加入 `$env:Path` 后重新打开 PowerShell。
+- WSL：继续使用 Linux 版 Node、`codex` 和 `/home/...` 路径；不要把 Windows `C:\...` 路径传给 WSL 进程。
 
-### 直接运行
+### 直接运行（Native Windows PowerShell）
+
+在仓库目录执行；把 `$project` 改为要浏览的目标项目（路径始终加引号）：
+
+```powershell
+$project = (Resolve-Path "C:\path\to\your\project").Path
+node ".\skill\conversation-navigator\scripts\server.mjs" --cwd "$project"
+```
+
+PowerShell 中如果 `codex` 仍提示找不到，先运行 `Get-Command codex` 检查 PATH；服务会通过 `%ComSpec%` 启动固定的 `codex.cmd app-server`。
+
+### 直接运行（Linux、macOS 或 WSL）
 
 ```bash
 git clone https://github.com/bensstark/codex-conversation-navigator.git
 cd codex-conversation-navigator
-node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
+node "skill/conversation-navigator/scripts/server.mjs" --cwd "/path/to/your/project"
 ```
 
 浏览器通常会自动打开。页面只会显示工作目录与 `--cwd` 完全一致的 VS Code 和 Codex CLI 对话。
@@ -40,9 +53,34 @@ node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
 
 ### 安装为 Codex Skill
 
+原生 Windows PowerShell 推荐使用 Junction（不会要求管理员权限或 Developer Mode）。目标已存在时先停止并检查，不要静默覆盖：
+
+```powershell
+$source = (Resolve-Path ".\skill\conversation-navigator").Path
+$parent = Join-Path $HOME ".agents\skills"
+$target = Join-Path $parent "conversation-navigator"
+New-Item -ItemType Directory -Force -Path "$parent" | Out-Null
+if (Test-Path -LiteralPath "$target") { throw "Skill target already exists: $target" }
+New-Item -ItemType Junction -Path "$target" -Target "$source"
+```
+
+如果仓库位于 WSL/UNC 路径导致 Junction 不可用，可在目标不存在时改用复制：
+
+```powershell
+$source = (Resolve-Path ".\skill\conversation-navigator").Path
+$parent = Join-Path $HOME ".agents\skills"
+$target = Join-Path $parent "conversation-navigator"
+New-Item -ItemType Directory -Force -Path "$parent" | Out-Null
+if (Test-Path -LiteralPath "$target") { throw "Skill target already exists: $target" }
+New-Item -ItemType Directory -Force -Path "$target" | Out-Null
+Copy-Item -Path "$source\*" -Destination "$target" -Recurse -Force
+```
+
+WSL 仍使用 Linux 的软链接命令：
+
 ```bash
-mkdir -p ~/.agents/skills
-ln -s "$(pwd)/skill/conversation-navigator" ~/.agents/skills/conversation-navigator
+mkdir -p "$HOME/.agents/skills"
+ln -s "$(pwd)/skill/conversation-navigator" "$HOME/.agents/skills/conversation-navigator"
 ```
 
 然后在 Codex 中输入：
@@ -76,13 +114,26 @@ Key features:
 
 - Node.js 20.19 or later
 - The `codex` command installed and available in your terminal
+- Native Windows 10/11: in PowerShell, verify that `Get-Command codex` finds the command. If it does not, add the Codex install directory to `$env:Path` and reopen PowerShell.
+- WSL: keep using Linux Node, `codex`, and `/home/...` paths; do not pass Windows `C:\...` paths to a WSL process.
 
-### Run directly
+### Run directly (Native Windows PowerShell)
+
+From the repository directory; set `$project` to the project whose conversations you want to browse (quote paths):
+
+```powershell
+$project = (Resolve-Path "C:\path\to\your\project").Path
+node ".\skill\conversation-navigator\scripts\server.mjs" --cwd "$project"
+```
+
+If PowerShell still reports that `codex` is not found, run `Get-Command codex` and fix PATH. The server uses `%ComSpec%` to start the fixed `codex.cmd app-server` command.
+
+### Run directly (Linux, macOS, or WSL)
 
 ```bash
 git clone https://github.com/bensstark/codex-conversation-navigator.git
 cd codex-conversation-navigator
-node skill/conversation-navigator/scripts/server.mjs --cwd /path/to/your/project
+node "skill/conversation-navigator/scripts/server.mjs" --cwd "/path/to/your/project"
 ```
 
 The browser normally opens automatically. The page only shows VS Code and Codex CLI conversations whose working directory exactly matches `--cwd`.
@@ -93,9 +144,34 @@ Local file links open a read-only code viewer. The viewer reads through a safe p
 
 ### Install as a Codex Skill
 
+On native Windows, prefer a Junction (it usually needs neither administrator rights nor Developer Mode). If the target already exists, stop and inspect it rather than silently replacing it:
+
+```powershell
+$source = (Resolve-Path ".\skill\conversation-navigator").Path
+$parent = Join-Path $HOME ".agents\skills"
+$target = Join-Path $parent "conversation-navigator"
+New-Item -ItemType Directory -Force -Path "$parent" | Out-Null
+if (Test-Path -LiteralPath "$target") { throw "Skill target already exists: $target" }
+New-Item -ItemType Junction -Path "$target" -Target "$source"
+```
+
+If the repository is under a WSL/UNC path and Junction creation is unavailable, copy into a target that does not already exist:
+
+```powershell
+$source = (Resolve-Path ".\skill\conversation-navigator").Path
+$parent = Join-Path $HOME ".agents\skills"
+$target = Join-Path $parent "conversation-navigator"
+New-Item -ItemType Directory -Force -Path "$parent" | Out-Null
+if (Test-Path -LiteralPath "$target") { throw "Skill target already exists: $target" }
+New-Item -ItemType Directory -Force -Path "$target" | Out-Null
+Copy-Item -Path "$source\*" -Destination "$target" -Recurse -Force
+```
+
+WSL continues to use the Linux symlink command:
+
 ```bash
-mkdir -p ~/.agents/skills
-ln -s "$(pwd)/skill/conversation-navigator" ~/.agents/skills/conversation-navigator
+mkdir -p "$HOME/.agents/skills"
+ln -s "$(pwd)/skill/conversation-navigator" "$HOME/.agents/skills/conversation-navigator"
 ```
 
 Then ask Codex:
