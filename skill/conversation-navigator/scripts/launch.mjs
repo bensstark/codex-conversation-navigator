@@ -2,7 +2,9 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isMainModule } from "./entrypoint.mjs";
 
 const SERVER_SCRIPT = fileURLToPath(new URL("./server.mjs", import.meta.url));
 const DEFAULT_READY_TIMEOUT_MS = 15_000;
@@ -347,8 +349,7 @@ function writeStdoutLine(line) {
   });
 }
 
-const isCli = process.argv[1]
-  && pathToFileURL(process.argv[1]).href === import.meta.url;
+const isCli = isMainModule(import.meta.url);
 if (isCli) {
   await runCli();
 }

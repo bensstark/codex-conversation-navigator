@@ -1,13 +1,14 @@
 import { spawn } from "node:child_process";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
   posix,
   win32,
 } from "node:path";
 
 import { AppServerClient } from "./app-server-client.mjs";
+import { isMainModule } from "./entrypoint.mjs";
 import { projectThread } from "./transcript.mjs";
 
 const STATIC_FILES = new Map([
@@ -494,8 +495,7 @@ async function runCli() {
   process.once("SIGTERM", stop);
 }
 
-const isCli = process.argv[1]
-  && pathToFileURL(pathApiFor().resolve(process.argv[1])).href === import.meta.url;
+const isCli = isMainModule(import.meta.url);
 if (isCli) {
   await runCli();
 }

@@ -47,6 +47,7 @@ test("README documents the machine-readable Windows launch fallback", async () =
 
 test("skill package includes its declared entrypoint and web assets", async () => {
   await Promise.all([
+    access(new URL("scripts/entrypoint.mjs", skillRoot)),
     access(new URL("scripts/launch.mjs", skillRoot)),
     access(new URL("scripts/server.mjs", skillRoot)),
     access(new URL("assets/web/index.html", skillRoot)),
