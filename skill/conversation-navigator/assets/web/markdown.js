@@ -1,6 +1,6 @@
 import createDOMPurify from "./vendor/purify.es.mjs";
 import hljs from "./vendor/highlight.min.js";
-import { marked } from "./vendor/marked.esm.js";
+import { parseMathMarkdown, restoreMath } from "./math-markdown.js";
 
 const ALLOWED_TAGS = [
   "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "em", "strong", "del",
@@ -309,7 +309,7 @@ function highlightCodeBlocks(fragment, purifier, highlighter) {
 }
 
 export function renderMarkdown(document, source, {
-  parse = (value) => marked.parse(value, { async: false, gfm: true }),
+  parse,
   createPurifier = createDOMPurify,
   highlighter = hljs,
 } = {}) {
@@ -319,10 +319,14 @@ export function renderMarkdown(document, source, {
     if (!purifier?.isSupported) {
       return textFragment(document, text);
     }
-    const html = parse(text.replace(LEADING_ZERO_WIDTH, ""));
+    const input = text.replace(LEADING_ZERO_WIDTH, "");
+    const { html, formulas } = parse
+      ? { html: parse(input), formulas: new Map() }
+      : parseMathMarkdown(input);
     const fragment = sanitizeMarkdown(purifier, html);
     hardenFragment(document, fragment);
     highlightCodeBlocks(fragment, purifier, highlighter);
+    restoreMath(document, fragment, formulas);
     return fragment;
   } catch {
     return textFragment(document, text);

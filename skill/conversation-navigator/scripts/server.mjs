@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile, realpath, stat } from "node:fs/promises";
+import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -18,6 +18,8 @@ const STATIC_FILES = new Map([
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/style.css", ["style.css", "text/css; charset=utf-8"]],
   ["/markdown.js", ["markdown.js", "text/javascript; charset=utf-8"]],
+  ["/math-markdown.js", ["math-markdown.js", "text/javascript; charset=utf-8"]],
+  ["/math.css", ["math.css", "text/css; charset=utf-8"]],
   ["/theme.js", ["theme.js", "text/javascript; charset=utf-8"]],
   ["/file-viewer.html", ["file-viewer.html", "text/html; charset=utf-8"]],
   ["/file-viewer.js", ["file-viewer.js", "text/javascript; charset=utf-8"]],
@@ -31,6 +33,9 @@ const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
+  // KaTeX creates layout style attributes after user HTML is sanitized.
+  "style-src-attr 'unsafe-inline'",
+  "font-src 'self'",
   "connect-src 'self'",
   "img-src 'self' data: http: https:",
   "media-src 'none'",
@@ -249,6 +254,22 @@ export async function createNavigatorServer({
   let lastActivity = Date.now();
   let idleTimer = null;
 
+  // Register an exact allowlist of bundled math assets, including font files.
+  const staticFiles = new Map(STATIC_FILES);
+  const katexRoot = resolve(webRoot, "vendor/katex");
+  for (const [name, type] of [
+    ["katex.mjs", "text/javascript; charset=utf-8"],
+    ["katex.min.css", "text/css; charset=utf-8"],
+  ]) {
+    staticFiles.set(`/vendor/katex/${name}`, [`vendor/katex/${name}`, type]);
+  }
+  const fonts = await readdir(resolve(katexRoot, "fonts")).catch(() => []);
+  for (const name of fonts) {
+    if (/^KaTeX_[A-Za-z0-9_-]+\.woff2$/.test(name)) {
+      staticFiles.set(`/vendor/katex/fonts/${name}`, [`vendor/katex/fonts/${name}`, "font/woff2"]);
+    }
+  }
+
   const server = createServer(async (request, response) => {
     lastActivity = Date.now();
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -299,7 +320,7 @@ export async function createNavigatorServer({
         return;
       }
 
-      const staticFile = STATIC_FILES.get(requestUrl.pathname);
+      const staticFile = staticFiles.get(requestUrl.pathname);
       if (!staticFile) {
         // Absolute Codex file links land here; serve only files below --cwd.
         let requestedPath;
