@@ -1,6 +1,6 @@
 import createDOMPurify from "./vendor/purify.es.mjs";
 import hljs from "./vendor/highlight.min.js";
-import { marked } from "./vendor/marked.esm.js";
+import { parseMathMarkdown, restoreMath } from "./math-markdown.js";
 
 const ALLOWED_TAGS = [
   "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "em", "strong", "del",
@@ -36,6 +36,11 @@ function hasAllowedLink(document, value) {
   if (trimmed.startsWith("#")) {
     return true;
   }
+  // A native Windows drive path is a local file reference, not a custom URL
+  // scheme. Keep the check strict so arbitrary schemes remain rejected.
+  if (isWindowsDrivePath(trimmed)) {
+    return true;
+  }
   try {
     return SAFE_LINK_PROTOCOLS.has(new URL(trimmed, document.baseURI).protocol);
   } catch {
@@ -43,18 +48,45 @@ function hasAllowedLink(document, value) {
   }
 }
 
+function isWindowsDrivePath(value) {
+  return /^\/?[A-Za-z]:[\\/]/.test(value.trim());
+}
+
+function normalizeWindowsMarkdownLinks(source) {
+  // Marked treats backslashes as escapes and spaces as the end of a link
+  // destination. Normalize only strict drive paths inside Markdown links so
+  // native Windows references reach the same safe local-file handling path.
+  return source.replace(
+    /(\]\(\s*<?)([A-Za-z]:[\\/][^\)\n>]*)(>?\s*\))/g,
+    (_match, prefix, path, suffix) =>
+      `${prefix}${path.replaceAll("\\", "/").replaceAll(" ", "%20")}${suffix}`,
+  );
+}
+
 function isFileLink(document, value) {
   try {
-    return new URL(value.trim(), document.baseURI).protocol === "file:";
+    return new URL(value.trim(), document.baseURI).protocol === "file:"
+      || isWindowsDrivePath(value);
   } catch {
-    return /^file:/i.test(value.trim());
+    return isWindowsDrivePath(value) || /^file:/i.test(value.trim());
   }
 }
 
 function localFilePath(document, value) {
+  const trimmed = value.trim();
+  if (isWindowsDrivePath(trimmed)) {
+    try {
+      return decodeURIComponent(trimmed).replace(/^\/(?=[A-Za-z]:[\\/])/, "");
+    } catch {
+      // A literal percent sign is valid in a native path; only decode when
+      // the complete reference is valid URI text.
+      return trimmed.replace(/^\/(?=[A-Za-z]:[\\/])/, "");
+    }
+  }
+
   let url;
   try {
-    url = new URL(value.trim(), document.baseURI);
+    url = new URL(trimmed, document.baseURI);
   } catch {
     return null;
   }
@@ -227,9 +259,10 @@ function hardenFragment(document, fragment) {
 
 function sanitizeMarkdown(purifier, html) {
   const allowFileHref = (_node, data) => {
-    if (data.attrName === "href" && /^file:/i.test(data.attrValue)) {
-      // DOMPurify does not allow file: by default; hardenFragment converts it
-      // to a same-origin endpoint immediately after this sanitization pass.
+    if (data.attrName === "href"
+        && (/^file:/i.test(data.attrValue) || isWindowsDrivePath(data.attrValue))) {
+      // DOMPurify does not allow local file references by default; hardenFragment
+      // converts them to a same-origin endpoint immediately after this pass.
       data.forceKeepAttr = true;
     }
   };
@@ -309,7 +342,7 @@ function highlightCodeBlocks(fragment, purifier, highlighter) {
 }
 
 export function renderMarkdown(document, source, {
-  parse = (value) => marked.parse(value, { async: false, gfm: true }),
+  parse,
   createPurifier = createDOMPurify,
   highlighter = hljs,
 } = {}) {
@@ -319,10 +352,14 @@ export function renderMarkdown(document, source, {
     if (!purifier?.isSupported) {
       return textFragment(document, text);
     }
-    const html = parse(text.replace(LEADING_ZERO_WIDTH, ""));
+    const input = normalizeWindowsMarkdownLinks(text.replace(LEADING_ZERO_WIDTH, ""));
+    const { html, formulas } = parse
+      ? { html: parse(input), formulas: new Map() }
+      : parseMathMarkdown(input);
     const fragment = sanitizeMarkdown(purifier, html);
     hardenFragment(document, fragment);
     highlightCodeBlocks(fragment, purifier, highlighter);
+    restoreMath(document, fragment, formulas);
     return fragment;
   } catch {
     return textFragment(document, text);

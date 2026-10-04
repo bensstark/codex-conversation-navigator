@@ -1,10 +1,46 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
+/**
+ * Build the process invocation without consulting user input. Windows does
+ * not execute .cmd files directly through CreateProcess, so invoke the fixed
+ * Codex shim through the command interpreter instead of enabling shell mode.
+ */
+export function appServerInvocation({
+  platform = process.platform,
+  env = process.env,
+  command = "codex",
+} = {}) {
+  if (platform === "win32") {
+    const comSpec = env?.ComSpec || env?.COMSPEC || "cmd.exe";
+    return {
+      command: comSpec,
+      args: ["/d", "/s", "/c", "codex.cmd", "app-server"],
+      options: {
+        shell: false,
+        windowsHide: true,
+      },
+    };
+  }
+
+  return {
+    command,
+    args: ["app-server"],
+    options: {},
+  };
+}
+
 export class AppServerClient {
-  constructor({ spawnProcess = spawn, command = "codex" } = {}) {
+  constructor({
+    spawnProcess = spawn,
+    command = "codex",
+    platform = process.platform,
+    env = process.env,
+  } = {}) {
     this.spawnProcess = spawnProcess;
     this.command = command;
+    this.platform = platform;
+    this.env = env;
     this.nextId = 1;
     this.pending = new Map();
     this.child = null;
@@ -18,8 +54,15 @@ export class AppServerClient {
     }
 
     try {
-      this.child = this.spawnProcess(this.command, ["app-server"], {
+      const invocation = appServerInvocation({
+        platform: this.platform,
+        env: this.env,
+        command: this.command,
+      });
+      this.child = this.spawnProcess(invocation.command, invocation.args, {
         stdio: ["pipe", "pipe", "pipe"],
+        env: this.env,
+        ...invocation.options,
       });
     } catch (error) {
       this.child = null;
