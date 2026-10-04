@@ -41,7 +41,7 @@ test("web assets expose the navigation interface safely", async () => {
   assert.match(app, /import \{ renderMarkdown \} from "\.\/markdown\.js"/);
   assert.match(app, /import \{ initializeCodeTheme \} from "\.\/theme\.js"/);
   assert.match(app, /initializeCodeTheme\(document, elements\.themeToggle\)/);
-  assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text\)\)/);
+  assert.match(app, /replaceChildren\(renderMarkdown\(document, message\.text, \{ threadId: thread\.id \}\)\)/);
   assert.match(app, /addCodeCopyButtons\(document, body\)/);
   assert.doesNotMatch(app, /createElement\("div", "message-text", message\.text\)/);
   assert.doesNotMatch(app, /\.innerHTML\s*=/);

@@ -116,7 +116,7 @@ test("serves static assets and thread APIs without authentication", async (t) =>
   const policy = index.headers.get("content-security-policy");
   assert.match(policy, /img-src 'self' data: http: https:/);
   assert.match(policy, /media-src 'none'/);
-  assert.match(policy, /frame-src 'none'/);
+  assert.match(policy, /frame-src 'self'/);
   assert.match(policy, /object-src 'none'/);
   assert.match(policy, /form-action 'none'/);
 

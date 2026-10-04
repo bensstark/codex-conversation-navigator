@@ -35,6 +35,7 @@ Open a local, read-only browser companion for Codex conversations associated wit
 4. For startup diagnostics, run `server.mjs` directly in the foreground with the same `--cwd` value.
 
 Use `--no-open` only when automatic browser opening is unwanted.
+The foreground `server.mjs` also accepts `--port <1-65535>` to restart at the same URL.
 
 If `codex` cannot be found, check `Get-Command codex` in PowerShell or `command -v codex` on POSIX, fix PATH, and start a new terminal. Windows starts the fixed `codex.cmd app-server` shim through `%ComSpec%`; POSIX starts `codex app-server` directly.
 
@@ -44,6 +45,9 @@ If `codex` cannot be found, check `Get-Command codex` in PowerShell or `command 
 - Filter to VS Code and Codex CLI threads whose stored working directory exactly matches the launch directory.
 - Let the user filter the thread list between all sources, VS Code, and Codex CLI.
 - Show the exact launch working directory in the status bar.
+- Render valid `visualize` directives inline in messages, with interactive controls in an opaque-origin `allow-scripts` sandbox. Code examples remain literal. Malformed directives stay readable; missing files show an inline error.
+- For inline visualizations only, read referenced HTML (at most 1 MiB) within the launch directory or the matching thread's dated `$CODEX_HOME/visualizations/YYYY/MM/DD/<thread-id>/` directory. The default Codex home is `~/.codex`. Resolve real paths to reject escaped links; do not expand the local-file viewer's scope.
+- Visualization scripts cannot read the parent page, call the conversation API, navigate the top-level page, open popups or make network requests. Self-contained HTML/SVG/canvas diagrams work; external libraries and resources are not supported. Automatic conversation synchronization preserves unchanged diagrams and their controls.
 - Open local file links in a read-only code viewer backed by an endpoint limited to regular files below the exact launch directory; show line numbers, target linked lines, and extension-aware syntax highlighting with a plain-text fallback.
 - Explain an empty result in terms of that exact-directory filter and suggest relaunching with the appropriate `--cwd` value.
 - Warn that the server has no access control, so any process on the same machine can read its conversation API while it is running.

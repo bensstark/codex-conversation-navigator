@@ -8,6 +8,7 @@
 
 - 只显示用户消息和 Codex 的最终回答，不显示思考过程
 - 支持 Markdown 和代码语法高亮
+- 将 `visualize` 标记直接显示为消息中的互动图，无需跳转；自动同步保留未改变图表的操作状态
 - 支持 LaTeX 数学公式：行内公式使用 `$...$` 或 `\(...\)`，独立公式使用 `$$...$$` 或 `\[...\]`；KaTeX 和字体随技能本地提供，代码块保留源码
 - 支持打开 `file://` 和 Codex 常见的 `/绝对路径/file.py:行号` 本地文件链接
 - 本地代码查看器显示行号、定位到指定行，并按扩展名高亮 Python、Rust、Java、JSON、JavaScript/TypeScript、Go、C/C++、C#、Kotlin、Swift、Shell、SQL、HTML/XML、CSS、Markdown、YAML 等
@@ -71,6 +72,8 @@ node "skill/conversation-navigator/scripts/server.mjs" --cwd "/path/to/your/proj
 
 本地文件链接会打开只读代码查看器；查看器通过安全的纯文本接口读取文件，只允许读取 `--cwd` 目录内的普通文件，单个文件最大 4 MiB。无法识别的扩展名会回退为纯文本。
 
+互动图仅读取当前对话明确引用的 HTML（上限 1 MiB）：文件必须位于 `--cwd` 内，或对应对话的 `$CODEX_HOME/visualizations/YYYY/MM/DD/<thread-id>/` 目录内（默认 Codex home 为 `~/.codex`）。图表在隔离沙箱中运行脚本，不能读取对话页面、访问网络、打开新窗口或跳转页面。支持自包含 HTML/SVG/canvas；依赖外部资源的图表不受支持。代码块中的标记保持原文，文件缺失时在消息中显示错误。
+
 ### 安装为 Codex Skill
 
 原生 Windows PowerShell 推荐使用 Junction（不会要求管理员权限或 Developer Mode）。目标已存在时先停止并检查，不要静默覆盖：
@@ -119,6 +122,7 @@ Key features:
 
 - Shows user messages and final Codex answers without reasoning traces
 - Renders Markdown with syntax-highlighted code
+- Renders `visualize` directives as inline interactive diagrams without opening another page; synchronization preserves unchanged diagrams and their controls
 - Renders LaTeX math with `$...$`, `\(...\)`, `$$...$$`, and `\[...\]`; KaTeX and fonts are bundled locally, and code blocks remain literal
 - Opens `file://` URLs and Codex-style `/absolute/path/file.py:line` local file links
 - Opens a read-only code viewer with line numbers, line targeting, and extension-aware highlighting for Python, Rust, Java, JSON, JavaScript/TypeScript, Go, C/C++, C#, Kotlin, Swift, Shell, SQL, HTML/XML, CSS, Markdown, YAML, and more
@@ -181,6 +185,8 @@ The browser normally opens automatically. The page only shows VS Code and Codex 
 Other processes on the same machine can read the conversation API while the server is running.
 
 Local file links open a read-only code viewer. The viewer reads through a safe plain-text endpoint that only serves regular files below `--cwd`, limits previews to 4 MiB per file, and falls back to plain text for unknown extensions.
+
+Inline diagrams may read only HTML explicitly referenced by the selected thread (up to 1 MiB), under the launch directory or that thread's dated `$CODEX_HOME/visualizations/YYYY/MM/DD/<thread-id>/` directory (default home: `~/.codex`). Scripts run in an opaque-origin sandbox with no network access, parent-page access, popups or top-level navigation. Only self-contained HTML/SVG/canvas diagrams are supported. Code examples stay literal; missing files produce inline errors.
 
 ### Install as a Codex Skill
 

@@ -169,6 +169,7 @@ function bootstrap() {
     themeToggle: document.getElementById("theme-toggle"),
   };
   initializeCodeTheme(document, elements.themeToggle);
+  const messageSnapshots = new WeakMap();
   const state = {
     source: elements.sourceSelect.value,
     cwd: "",
@@ -273,34 +274,50 @@ function bootstrap() {
   function renderTranscript(thread) {
     const followBottom = isNearBottom(elements.transcript);
     const previousScrollTop = elements.transcript.scrollTop;
-    const fragment = document.createDocumentFragment();
+    const articles = [];
+    const existingArticles = new Map([...elements.transcript.querySelectorAll(":scope > article.message")]
+      .map((article) => [article.dataset.messageId, article]));
     let firstUserMessageId = null;
 
     for (const turn of thread.turns) {
       for (const message of turn.messages) {
+        const signature = JSON.stringify([thread.id, message.role, message.text]);
+        const existing = existingArticles.get(message.id);
+        if (existing && messageSnapshots.get(existing) === signature) {
+          articles.push(existing);
+          if (message.role === "user" && !firstUserMessageId) firstUserMessageId = message.id;
+          continue;
+        }
         const article = createElement("article", `message message-${message.role}`);
+        messageSnapshots.set(article, signature);
         article.id = `message-${message.id}`;
         article.dataset.role = message.role;
         article.dataset.messageId = message.id;
         const body = createElement("div", "message-text");
-        body.replaceChildren(renderMarkdown(document, message.text));
+        body.replaceChildren(renderMarkdown(document, message.text, { threadId: thread.id }));
         addCodeCopyButtons(document, body);
         article.append(
           createElement("p", "message-role", message.role === "user" ? "You" : "Codex"),
           body,
         );
-        fragment.append(article);
+        articles.push(article);
         if (message.role === "user" && !firstUserMessageId) {
           firstUserMessageId = message.id;
         }
       }
     }
 
-    if (!fragment.childNodes.length) {
-      fragment.append(createElement("p", "empty-note transcript-empty", "This thread has no messages to display"));
+    if (!articles.length) {
+      articles.push(createElement("p", "empty-note transcript-empty", "This thread has no messages to display"));
     }
 
-    elements.transcript.replaceChildren(fragment);
+    // Do not detach unchanged articles: detaching an iframe reloads its document
+    // and loses slider state on every automatic synchronization.
+    for (let index = 0; index < articles.length; index += 1) {
+      const current = elements.transcript.children[index];
+      if (current !== articles[index]) elements.transcript.insertBefore(articles[index], current || null);
+    }
+    while (elements.transcript.children.length > articles.length) elements.transcript.lastElementChild.remove();
     elements.transcript.scrollTop = followBottom
       ? elements.transcript.scrollHeight
       : previousScrollTop;
@@ -364,7 +381,7 @@ function bootstrap() {
       }
 
       const { thread } = await api(`/api/threads/${encodeURIComponent(state.threadId)}`);
-      const threadSignature = JSON.stringify(thread);
+      const threadSignature = JSON.stringify({ ...thread, updatedAt: undefined });
       if (threadSignature !== state.threadSignature) {
         state.threadSignature = threadSignature;
         renderTranscript(thread);
