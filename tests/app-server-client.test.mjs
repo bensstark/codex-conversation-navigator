@@ -3,7 +3,10 @@ import { EventEmitter } from "node:events";
 import { PassThrough, Writable } from "node:stream";
 import test from "node:test";
 
-import { AppServerClient } from "../skill/conversation-navigator/scripts/app-server-client.mjs";
+import {
+  AppServerClient,
+  appServerInvocation,
+} from "../skill/conversation-navigator/scripts/app-server-client.mjs";
 
 function createFakeProcess(onMessage) {
   const child = new EventEmitter();
@@ -190,5 +193,49 @@ test("reports a missing Codex executable", async () => {
   await assert.rejects(
     started,
     /Unable to start Codex App Server: spawn codex ENOENT/,
+  );
+});
+
+test("invokes the fixed Codex cmd shim through ComSpec on Windows", async () => {
+  let fake;
+  fake = createFakeProcess((message) => {
+    if (message.method === "initialize") {
+      fake.respond(message.id, {});
+    }
+  });
+  const calls = [];
+  const env = { ComSpec: "C:\\Windows\\System32\\cmd.exe" };
+  const client = new AppServerClient({
+    platform: "win32",
+    env,
+    spawnProcess(...args) {
+      calls.push(args);
+      return fake.child;
+    },
+  });
+
+  await client.start();
+
+  assert.deepEqual(calls[0], [
+    env.ComSpec,
+    ["/d", "/s", "/c", "codex.cmd", "app-server"],
+    {
+      stdio: ["pipe", "pipe", "pipe"],
+      env,
+      shell: false,
+      windowsHide: true,
+    },
+  ]);
+  client.stop();
+});
+
+test("uses a direct Codex invocation on POSIX", () => {
+  assert.deepEqual(
+    appServerInvocation({ platform: "linux", command: "codex" }),
+    {
+      command: "codex",
+      args: ["app-server"],
+      options: {},
+    },
   );
 });

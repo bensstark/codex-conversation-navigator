@@ -1,16 +1,15 @@
 import { spawn } from "node:child_process";
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
-  basename,
-  isAbsolute,
-  relative,
+  posix,
   resolve,
-  sep,
+  win32,
 } from "node:path";
 
 import { AppServerClient } from "./app-server-client.mjs";
+import { isMainModule } from "./entrypoint.mjs";
 import { projectThread } from "./transcript.mjs";
 
 const STATIC_FILES = new Map([
@@ -54,6 +53,33 @@ const SOURCE_FILTERS = new Map([
 
 const MAX_LOCAL_FILE_BYTES = 4 * 1024 * 1024;
 
+function pathApiFor(platform = process.platform) {
+  return platform === "win32" ? win32 : posix;
+}
+
+export function nativePathFromRequest(requestedPath, platform = process.platform) {
+  if (platform !== "win32") {
+    return requestedPath;
+  }
+
+  // URL pathnames have a leading slash before a Windows drive letter. The
+  // file endpoint accepts an already-decoded URL form and native backslash
+  // paths. HTTP/URL parsing decodes each layer exactly once before this call.
+  const withoutUrlSlash = requestedPath.replace(/^\/(?=[A-Za-z]:[\\/])/, "");
+  return win32.normalize(withoutUrlSlash.replaceAll("/", "\\"));
+}
+
+export function normalizeLocalFileRequest(requestedPath, platform = process.platform) {
+  if (typeof requestedPath !== "string") {
+    return requestedPath;
+  }
+  return nativePathFromRequest(requestedPath, platform);
+}
+
+function isLaunchPathRequest(requestedPath, launchPath, platform = process.platform) {
+  return isWithinDirectory(launchPath, requestedPath, platform);
+}
+
 class LocalFileRequestError extends Error {
   constructor(status, message) {
     super(message);
@@ -61,15 +87,16 @@ class LocalFileRequestError extends Error {
   }
 }
 
-function isWithinDirectory(root, target) {
-  const relativePath = relative(root, target);
+function isWithinDirectory(root, target, platform = process.platform) {
+  const pathApi = pathApiFor(platform);
+  const relativePath = pathApi.relative(root, target);
   return relativePath === ""
-    || (!relativePath.startsWith(`..${sep}`)
+    || (!relativePath.startsWith(`..${pathApi.sep}`)
       && relativePath !== ".."
-      && !isAbsolute(relativePath));
+      && !pathApi.isAbsolute(relativePath));
 }
 
-function localFileCandidates(requestedPath) {
+export function localFileCandidates(requestedPath) {
   const candidates = [{ path: requestedPath, line: null }];
   // Codex file links may append a line or line/column suffix to an absolute path.
   const lineMatch = requestedPath.match(/^(.*?):(\d+)(?::\d+)?$/);
@@ -79,7 +106,11 @@ function localFileCandidates(requestedPath) {
   return candidates;
 }
 
-async function resolveLocalFile(cwd, requestedPath) {
+export async function resolveLocalFile(
+  cwd,
+  requestedPath,
+  { platform = process.platform } = {},
+) {
   if (typeof requestedPath !== "string" || !requestedPath.trim()) {
     throw new LocalFileRequestError(400, "A local file path is required");
   }
@@ -91,10 +122,12 @@ async function resolveLocalFile(cwd, requestedPath) {
     throw new LocalFileRequestError(404, "Local file not found");
   }
 
+  const pathApi = pathApiFor(platform);
   for (const candidate of localFileCandidates(requestedPath.trim())) {
-    const absolutePath = isAbsolute(candidate.path)
-      ? resolve(candidate.path)
-      : resolve(root, candidate.path);
+    const nativeCandidatePath = nativePathFromRequest(candidate.path, platform);
+    const absolutePath = pathApi.isAbsolute(nativeCandidatePath)
+      ? pathApi.resolve(nativeCandidatePath)
+      : pathApi.resolve(root, nativeCandidatePath);
     let target;
     try {
       target = await realpath(absolutePath);
@@ -105,7 +138,7 @@ async function resolveLocalFile(cwd, requestedPath) {
       throw new LocalFileRequestError(403, "Local file cannot be read");
     }
 
-    if (!isWithinDirectory(root, target)) {
+    if (!isWithinDirectory(root, target, platform)) {
       throw new LocalFileRequestError(403, "Local file is outside the launch directory");
     }
 
@@ -131,8 +164,8 @@ async function resolveLocalFile(cwd, requestedPath) {
   throw new LocalFileRequestError(404, "Local file not found");
 }
 
-function localFileHeaders(filePath, size) {
-  const fileName = basename(filePath).replace(/["\\\r\n]/g, "_") || "file";
+function localFileHeaders(filePath, size, platform = process.platform) {
+  const fileName = pathApiFor(platform).basename(filePath).replace(/["\\\r\n]/g, "_") || "file";
   return {
     "content-type": "text/plain; charset=utf-8",
     "content-disposition": `inline; filename="${fileName}"`,
@@ -144,14 +177,14 @@ function localFileHeaders(filePath, size) {
   };
 }
 
-async function sendLocalFile(response, file) {
+async function sendLocalFile(response, file, platform = process.platform) {
   let contents;
   try {
     contents = await readFile(file.path);
   } catch {
     throw new LocalFileRequestError(403, "Local file cannot be read");
   }
-  response.writeHead(200, localFileHeaders(file.path, contents.byteLength));
+  response.writeHead(200, localFileHeaders(file.path, contents.byteLength, platform));
   response.end(contents);
 }
 
@@ -188,17 +221,26 @@ function sendJson(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-function openInBrowser(url) {
+export function browserInvocation(
+  url,
+  { platform = process.platform, env = process.env } = {},
+) {
   let command;
   let args;
+  let options = {
+    detached: true,
+    stdio: "ignore",
+    shell: false,
+  };
 
-  if (process.platform === "darwin") {
+  if (platform === "darwin") {
     command = "open";
     args = [url];
-  } else if (process.platform === "win32") {
-    command = "cmd.exe";
+  } else if (platform === "win32") {
+    command = env?.ComSpec || env?.COMSPEC || "cmd.exe";
     args = ["/c", "start", "", url];
-  } else if (process.env.WSL_DISTRO_NAME) {
+    options = { ...options, windowsHide: true };
+  } else if (env?.WSL_DISTRO_NAME) {
     command = "cmd.exe";
     args = ["/c", "start", "", url];
   } else {
@@ -206,11 +248,21 @@ function openInBrowser(url) {
     args = [url];
   }
 
+  return { command, args, options };
+}
+
+export function openInBrowser(
+  url,
+  { platform = process.platform, env = process.env, spawnProcess = spawn } = {},
+) {
+  const invocation = browserInvocation(url, { platform, env });
+
   try {
-    const child = spawn(command, args, {
-      detached: true,
-      stdio: "ignore",
-    });
+    const child = spawnProcess(
+      invocation.command,
+      invocation.args,
+      invocation.options,
+    );
     child.on("error", () => {});
     child.unref();
   } catch {
@@ -218,7 +270,7 @@ function openInBrowser(url) {
   }
 }
 
-export function parseCliArgs(args) {
+export function parseCliArgs(args, { platform = process.platform } = {}) {
   const options = {
     cwd: process.cwd(),
     openUrl: true,
@@ -233,7 +285,7 @@ export function parseCliArgs(args) {
       if (!cwd || cwd.startsWith("--")) {
         throw new Error("--cwd requires a path");
       }
-      options.cwd = resolve(cwd);
+      options.cwd = pathApiFor(platform).resolve(cwd);
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${argument}`);
@@ -243,12 +295,32 @@ export function parseCliArgs(args) {
   return options;
 }
 
+/**
+ * Notify a parent launcher when this process was started with Node's IPC
+ * channel. Foreground invocations do not expose `process.send`, so they keep
+ * the existing stdout and signal-handling behavior unchanged.
+ */
+export function notifyParent(message, processLike = process) {
+  if (typeof processLike?.send !== "function") {
+    return false;
+  }
+
+  try {
+    processLike.send(message);
+    return true;
+  } catch {
+    // The launcher may have already disconnected after receiving readiness.
+    return false;
+  }
+}
+
 export async function createNavigatorServer({
   client,
   cwd,
   webRoot = fileURLToPath(new URL("../assets/web/", import.meta.url)),
   idleMs = 30 * 60_000,
   openUrl = true,
+  platform = process.platform,
 }) {
   let closed = false;
   let lastActivity = Date.now();
@@ -278,8 +350,12 @@ export async function createNavigatorServer({
       if (requestUrl.pathname.startsWith("/api/")) {
         if (requestUrl.pathname === "/api/local-file") {
           try {
-            const file = await resolveLocalFile(cwd, requestUrl.searchParams.get("path"));
-            await sendLocalFile(response, file);
+            const file = await resolveLocalFile(
+              cwd,
+              requestUrl.searchParams.get("path"),
+              { platform },
+            );
+            await sendLocalFile(response, file, platform);
           } catch (error) {
             if (!sendLocalFileError(response, error)) {
               throw error;
@@ -331,12 +407,12 @@ export async function createNavigatorServer({
           response.end("Not found");
           return;
         }
-        const launchPath = resolve(cwd);
-        if (requestedPath === launchPath
-            || requestedPath.startsWith(`${launchPath}${sep}`)) {
+        const launchPath = pathApiFor(platform).resolve(cwd);
+        const nativeRequestedPath = nativePathFromRequest(requestedPath, platform);
+        if (isLaunchPathRequest(nativeRequestedPath, launchPath, platform)) {
           try {
-            await resolveLocalFile(cwd, requestedPath);
-            redirectToLocalFileViewer(response, requestUrl, requestedPath);
+            await resolveLocalFile(cwd, nativeRequestedPath, { platform });
+            redirectToLocalFileViewer(response, requestUrl, nativeRequestedPath);
           } catch (error) {
             if (!sendLocalFileError(response, error)) {
               throw error;
@@ -351,7 +427,7 @@ export async function createNavigatorServer({
       }
 
       const [fileName, contentType] = staticFile;
-      const contents = await readFile(resolve(webRoot, fileName));
+      const contents = await readFile(pathApiFor(platform).resolve(webRoot, fileName));
       response.writeHead(200, {
         "content-type": contentType,
         "content-security-policy": CONTENT_SECURITY_POLICY,
@@ -403,24 +479,32 @@ export async function createNavigatorServer({
   const address = server.address();
   const url = `http://127.0.0.1:${address.port}/`;
   if (openUrl) {
-    openInBrowser(url);
+    openInBrowser(url, { platform });
   }
 
   return { url, close };
 }
 
 async function runCli() {
-  const options = parseCliArgs(process.argv.slice(2));
-  const client = new AppServerClient();
+  let client;
   let navigator;
 
   try {
+    const options = parseCliArgs(process.argv.slice(2));
+    client = new AppServerClient();
     await client.start();
     navigator = await createNavigatorServer({ client, ...options });
+    notifyParent({
+      type: "ready",
+      url: navigator.url,
+      pid: process.pid,
+    });
     console.log(`Conversation Navigator: ${navigator.url}`);
   } catch (error) {
-    client.stop();
-    console.error(error.message);
+    client?.stop();
+    const message = error instanceof Error ? error.message : String(error);
+    notifyParent({ type: "error", message });
+    console.error(message);
     process.exitCode = 1;
     return;
   }
@@ -433,8 +517,7 @@ async function runCli() {
   process.once("SIGTERM", stop);
 }
 
-const isCli = process.argv[1]
-  && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+const isCli = isMainModule(import.meta.url);
 if (isCli) {
   await runCli();
 }

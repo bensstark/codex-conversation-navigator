@@ -95,6 +95,16 @@ test("malformed and unsupported TeX remain readable", () => {
   assert.match(container.textContent, /unfinished/);
 });
 
+test("math and native Windows Markdown links work together", () => {
+  const container = render(String.raw`Formula \(\frac{1}{2}\) and [notes](C:\Users\learner\formula.md:7).`);
+  assert.equal(container.querySelectorAll(".katex").length, 1);
+  const link = container.querySelector("a");
+  const url = new URL(link.href);
+  assert.equal(url.pathname, "/file-viewer.html");
+  assert.equal(url.searchParams.get("path"), "C:/Users/learner/formula.md:7");
+  assert.match(link.textContent, /line 7/);
+});
+
 test("untrusted HTML and TeX cannot create active content or trusted styles", () => {
   const container = render(String.raw`<span class="katex" style="position:fixed" onclick="alert(1)">fake</span>
 

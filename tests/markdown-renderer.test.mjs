@@ -279,6 +279,27 @@ test("renderMarkdown labels same-origin absolute file links with their line", ()
   assert.equal(links[1].textContent, "README.md");
 });
 
+test("renderMarkdown proxies Windows drive paths and file URLs", () => {
+  const { container } = render(`[url](file:///C:/Users/Ada/My%20Project/src.py:12)
+[slash](C:/Users/Ada/My%20Project/slash.py:7)
+[backslash](C:\\Users\\Ada\\My Project\\backslash.py:4)
+[same-origin](/C:/Users/Ada/My%20Project/absolute.py:3)`);
+  const links = [...container.querySelectorAll("a")];
+
+  assert.equal(links.length, 4);
+  for (const [link, expectedPath, expectedLine, expectedLabel] of [
+    [links[0], "C:/Users/Ada/My Project/src.py:12", 12, "url"],
+    [links[1], "C:/Users/Ada/My Project/slash.py:7", 7, "slash"],
+    [links[2], "C:/Users/Ada/My Project/backslash.py:4", 4, "backslash"],
+    [links[3], "C:/Users/Ada/My Project/absolute.py:3", 3, "same-origin"],
+  ]) {
+    const endpoint = new URL(link.getAttribute("href"), "http://127.0.0.1/");
+    assert.equal(endpoint.pathname, "/file-viewer.html");
+    assert.equal(endpoint.searchParams.get("path"), expectedPath);
+    assert.equal(link.textContent, `${expectedLabel} (line ${expectedLine})`);
+  }
+});
+
 test("renderMarkdown keeps disclosures but removes other interactive controls", () => {
   const { container } = render(`<details open><summary>Approved</summary><p>visible</p></details>
 <dialog open>dialog</dialog>
