@@ -8,6 +8,7 @@
 
 - 只显示用户消息和 Codex 的最终回答，不显示思考过程
 - 支持 Markdown 和代码语法高亮
+- 支持 LaTeX 数学公式：行内公式使用 `$...$` 或 `\(...\)`，独立公式使用 `$$...$$` 或 `\[...\]`；KaTeX 和字体随技能本地提供，代码块保留源码
 - 支持打开 `file://` 和 Codex 常见的 `/绝对路径/file.py:行号` 本地文件链接
 - 本地代码查看器显示行号、定位到指定行，并按扩展名高亮 Python、Rust、Java、JSON、JavaScript/TypeScript、Go、C/C++、C#、Kotlin、Swift、Shell、SQL、HTML/XML、CSS、Markdown、YAML 等
 - 代码查看器顶栏支持调节字号（10–24px）
@@ -118,6 +119,7 @@ Key features:
 
 - Shows user messages and final Codex answers without reasoning traces
 - Renders Markdown with syntax-highlighted code
+- Renders LaTeX math with `$...$`, `\(...\)`, `$$...$$`, and `\[...\]`; KaTeX and fonts are bundled locally, and code blocks remain literal
 - Opens `file://` URLs and Codex-style `/absolute/path/file.py:line` local file links
 - Opens a read-only code viewer with line numbers, line targeting, and extension-aware highlighting for Python, Rust, Java, JSON, JavaScript/TypeScript, Go, C/C++, C#, Kotlin, Swift, Shell, SQL, HTML/XML, CSS, Markdown, YAML, and more
 - The code viewer toolbar supports font-size adjustment from 10px to 24px
